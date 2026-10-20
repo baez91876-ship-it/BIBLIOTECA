@@ -86,7 +86,3 @@ class LibroRead(BaseModel):
     disponibles: int
     autor: AutorRead
     categorias: list[CategoriaRead]
-
-
-class LibroAutorRead(LibroRead):
-    pass

@@ -1,8 +1,10 @@
 import logging
+import os
 from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy import inspect, text
@@ -87,6 +89,18 @@ app = FastAPI(
     version="1.0.0",
     lifespan=lifespan,
 )
+cors_origins = [
+    origin.strip()
+    for origin in os.getenv("CORS_ALLOWED_ORIGINS", "").split(",")
+    if origin.strip()
+]
+if cors_origins:
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=cors_origins,
+        allow_methods=["GET", "POST", "PATCH", "DELETE"],
+        allow_headers=["Content-Type"],
+    )
 app.mount(
     "/static", StaticFiles(directory=PROJECT_ROOT / "static"), name="static"
 )
@@ -100,7 +114,15 @@ app.include_router(reports.router)
 
 @app.get("/", include_in_schema=False)
 def interfaz():
-    return FileResponse(PROJECT_ROOT / "static" / "index.html")
+    return FileResponse(PROJECT_ROOT / "index.html")
+
+
+@app.get("/api-config.js", include_in_schema=False)
+def configuracion_api():
+    return FileResponse(
+        PROJECT_ROOT / "api-config.js",
+        media_type="application/javascript",
+    )
 
 
 @app.get("/health", include_in_schema=False)

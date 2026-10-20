@@ -5,31 +5,32 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#f7f5f0">
   <title>Biblioteca | Gestión de libros</title>
-  <link rel="stylesheet" href="/static/styles.css">
-  <script src="/static/app.js" defer></script>
+  <link rel="stylesheet" href="static/styles.css">
+  <script src="api-config.js" defer></script>
+  <script src="static/app.js" defer></script>
 </head>
 <body>
   <div class="app-shell">
     <aside class="sidebar">
-      <a class="brand" href="/" aria-label="Inicio Biblioteca">
+      <a class="brand" href="./" aria-label="Inicio Biblioteca">
         <span class="brand-icon" aria-hidden="true">B</span>
         <span>hojas<span class="brand-period">.</span></span>
       </a>
       <div class="sidebar-label">BIBLIOTECA</div>
-      <a class="nav-link active" href="/" aria-current="page">
+      <a class="nav-link active" href="./" aria-current="page">
         <span aria-hidden="true">▤</span> Colección
       </a>
       <div class="sidebar-note">
         <span class="note-mark" aria-hidden="true">✳</span>
         <p>Un buen libro siempre merece otra vuelta.</p>
       </div>
-      <div class="sidebar-footer"><span class="status-dot"></span> Biblioteca conectada</div>
+      <div class="sidebar-footer"><span class="status-dot"></span> <span id="connection-label">Biblioteca conectada</span></div>
     </aside>
 
     <main class="main-content">
       <header class="topbar">
         <span class="breadcrumb">Biblioteca <span>/</span> Colección</span>
-        <span class="database-badge"><span class="status-dot"></span> PostgreSQL · LIBRERIA</span>
+        <span class="database-badge"><span class="status-dot"></span> <span id="database-label">PostgreSQL · LIBRERIA</span></span>
       </header>
 
       <section class="page-heading">

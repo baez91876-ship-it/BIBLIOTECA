@@ -10,6 +10,14 @@ let books = [];
 let authors = [];
 let categories = [];
 let editingBookId = null;
+const apiBaseUrl = (window.BIBLIOTECA_API_URL || "").replace(/\/+$/, "");
+const pagesApiNotConfigured =
+  window.location.hostname.endsWith(".github.io") && !apiBaseUrl;
+
+if (pagesApiNotConfigured) {
+  document.querySelector("#connection-label").textContent = "API pendiente";
+  document.querySelector("#database-label").textContent = "API sin configurar";
+}
 
 function showNotice(message) {
   notice.textContent = message;
@@ -22,7 +30,12 @@ function hideNotice() {
 }
 
 async function apiRequest(path, options = {}) {
-  const response = await fetch(path, {
+  if (pagesApiNotConfigured) {
+    throw new Error(
+      "La interfaz está publicada, pero la API aún no está desplegada. Configura su URL en api-config.js.",
+    );
+  }
+  const response = await fetch(`${apiBaseUrl}${path}`, {
     ...options,
     headers: {
       ...(options.body ? { "Content-Type": "application/json" } : {}),

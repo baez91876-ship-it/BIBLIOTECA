@@ -33,6 +33,26 @@ $package = if (Test-Path app) { "app" } else { "APP" }
 La interfaz está en <http://127.0.0.1:8000/>, Swagger en
 <http://127.0.0.1:8000/docs> y ReDoc en <http://127.0.0.1:8000/redoc>.
 
+## Preparar GitHub Pages
+
+La interfaz estática tiene su `index.html` en la raíz del repositorio y puede
+publicarse desde `main` / `(root)` en **Settings → Pages → Build and deployment
+→ Deploy from a branch**. La API FastAPI y PostgreSQL no se ejecutan en Pages:
+primero hay que desplegar la API y su base de datos en un servicio que admita
+Python y PostgreSQL.
+
+Antes de publicar, define la URL pública de esa API en `api-config.js`:
+
+```js
+window.BIBLIOTECA_API_URL = "https://URL-PUBLICA-DE-TU-API";
+```
+
+En el servicio de la API, configura `CORS_ALLOWED_ORIGINS` con el origen de
+Pages (por ejemplo, `https://baez91876-ship-it.github.io`, sin la ruta del
+repositorio) y vuelve a desplegarla. El valor vacío de ejemplo solo sirve para
+uso local o cuando la interfaz y API comparten origen; `127.0.0.1` no es una
+URL pública. No publiques la interfaz antes de configurar una API accesible.
+
 ## Pruebas
 
 ```powershell

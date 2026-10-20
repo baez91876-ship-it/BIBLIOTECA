@@ -1,9 +1,7 @@
-from typing import Annotated
-
-from fastapi import APIRouter, Depends, Query, Response, status
+from fastapi import APIRouter, Response, status
 
 from ..controllers import members
-from ..core.dependencies import Pagination, PaginationDep, SessionDep, get_pagination
+from ..core.dependencies import PaginationDep, SessionDep
 from ..models import Prestamo, Socio
 from ..schemas.prestamo import EstadoPrestamo, PrestamoRead
 from ..schemas.socio import SocioCreate, SocioPatch, SocioRead

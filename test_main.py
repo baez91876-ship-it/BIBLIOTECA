@@ -272,6 +272,14 @@ class BibliotecaApiTests(unittest.TestCase):
         self.assertEqual(self.client.get("/libros?limit=0").status_code, 422)
         self.assertEqual(self.client.get("/libros?limit=101").status_code, 422)
 
+    def test_interfaz_y_activos_en_rutas_de_pages(self):
+        response = self.client.get("/")
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('href="static/styles.css"', response.text)
+        self.assertIn('src="api-config.js"', response.text)
+        self.assertEqual(self.client.get("/api-config.js").status_code, 200)
+        self.assertEqual(self.client.get("/static/app.js").status_code, 200)
+
     def test_patch_rechaza_nulos_en_campos_requeridos(self):
         self.assertEqual(
             self.client.patch("/autores/1", json={"nombre": None}).status_code,
