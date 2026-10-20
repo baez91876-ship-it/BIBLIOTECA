@@ -132,9 +132,9 @@ async function loadBooks() {
   hideNotice();
   try {
     [books, authors, categories] = await Promise.all([
-      apiRequest("/libros"),
-      apiRequest("/autores"),
-      apiRequest("/categorias"),
+      apiRequest("/libros?limit=100"),
+      apiRequest("/autores?limit=100"),
+      apiRequest("/categorias?limit=100"),
     ]);
     renderBooks();
   } catch (error) {
