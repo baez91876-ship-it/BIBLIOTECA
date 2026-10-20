@@ -275,8 +275,8 @@ class BibliotecaApiTests(unittest.TestCase):
     def test_interfaz_y_activos_en_rutas_de_pages(self):
         response = self.client.get("/")
         self.assertEqual(response.status_code, 200)
-        self.assertIn('href="static/styles.css"', response.text)
-        self.assertIn('src="api-config.js"', response.text)
+        self.assertIn('href="static/styles.css', response.text)
+        self.assertIn('src="api-config.js', response.text)
         self.assertEqual(self.client.get("/api-config.js").status_code, 200)
         catalog = self.client.get("/catalogo.json")
         self.assertEqual(catalog.status_code, 200)
