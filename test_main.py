@@ -278,6 +278,10 @@ class BibliotecaApiTests(unittest.TestCase):
         self.assertIn('href="static/styles.css"', response.text)
         self.assertIn('src="api-config.js"', response.text)
         self.assertEqual(self.client.get("/api-config.js").status_code, 200)
+        catalog = self.client.get("/catalogo.json")
+        self.assertEqual(catalog.status_code, 200)
+        self.assertEqual(len(catalog.json()["autores"]), 40)
+        self.assertEqual(len(catalog.json()["libros"]), 41)
         self.assertEqual(self.client.get("/static/app.js").status_code, 200)
 
     def test_patch_rechaza_nulos_en_campos_requeridos(self):

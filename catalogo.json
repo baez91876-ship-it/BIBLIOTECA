@@ -1,0 +1,1160 @@
+{
+  "actualizado_en": "2026-10-20T16:15:45Z",
+  "autores": [
+    {
+      "nombre": "Ana María Matute",
+      "nacionalidad": "Española",
+      "anio_nacimiento": 1925,
+      "id": 31
+    },
+    {
+      "nombre": "Andrés Caicedo",
+      "nacionalidad": "Colombiana",
+      "anio_nacimiento": 1951,
+      "id": 13
+    },
+    {
+      "nombre": "Antonio Machado",
+      "nacionalidad": "Española",
+      "anio_nacimiento": 1875,
+      "id": 24
+    },
+    {
+      "nombre": "Arturo Pérez-Reverte",
+      "nacionalidad": "Española",
+      "anio_nacimiento": 1951,
+      "id": 40
+    },
+    {
+      "nombre": "Benito Pérez Galdós",
+      "nacionalidad": "Española",
+      "anio_nacimiento": 1843,
+      "id": 25
+    },
+    {
+      "nombre": "Camilo José Cela",
+      "nacionalidad": "Española",
+      "anio_nacimiento": 1916,
+      "id": 30
+    },
+    {
+      "nombre": "Candelario Obeso",
+      "nacionalidad": "Colombiana",
+      "anio_nacimiento": 1849,
+      "id": 21
+    },
+    {
+      "nombre": "Carlos Ruiz Zafón",
+      "nacionalidad": "Española",
+      "anio_nacimiento": 1964,
+      "id": 41
+    },
+    {
+      "nombre": "Carmen Laforet",
+      "nacionalidad": "Española",
+      "anio_nacimiento": 1921,
+      "id": 29
+    },
+    {
+      "nombre": "Carmen Martín Gaite",
+      "nacionalidad": "Española",
+      "anio_nacimiento": 1925,
+      "id": 32
+    },
+    {
+      "nombre": "Emilia Pardo Bazán",
+      "nacionalidad": "Española",
+      "anio_nacimiento": 1851,
+      "id": 26
+    },
+    {
+      "nombre": "Evelio Rosero",
+      "nacionalidad": "Colombiana",
+      "anio_nacimiento": 1958,
+      "id": 11
+    },
+    {
+      "nombre": "Federico García Lorca",
+      "nacionalidad": "Española",
+      "anio_nacimiento": 1898,
+      "id": 23
+    },
+    {
+      "nombre": "Fernando Vallejo",
+      "nacionalidad": "Colombiana",
+      "anio_nacimiento": 1942,
+      "id": 8
+    },
+    {
+      "nombre": "Gabriel García Márquez",
+      "nacionalidad": "Colombiana",
+      "anio_nacimiento": 1927,
+      "id": 2
+    },
+    {
+      "nombre": "Germán Espinosa",
+      "nacionalidad": "Colombiana",
+      "anio_nacimiento": 1938,
+      "id": 20
+    },
+    {
+      "nombre": "Gustavo Adolfo Bécquer",
+      "nacionalidad": "Española",
+      "anio_nacimiento": 1836,
+      "id": 37
+    },
+    {
+      "nombre": "Héctor Abad Faciolince",
+      "nacionalidad": "Colombiana",
+      "anio_nacimiento": 1958,
+      "id": 7
+    },
+    {
+      "nombre": "Javier Marías",
+      "nacionalidad": "Española",
+      "anio_nacimiento": 1951,
+      "id": 39
+    },
+    {
+      "nombre": "Jorge Isaacs",
+      "nacionalidad": "Colombiana",
+      "anio_nacimiento": 1837,
+      "id": 3
+    },
+    {
+      "nombre": "José Asunción Silva",
+      "nacionalidad": "Colombiana",
+      "anio_nacimiento": 1865,
+      "id": 16
+    },
+    {
+      "nombre": "José Eustasio Rivera",
+      "nacionalidad": "Colombiana",
+      "anio_nacimiento": 1888,
+      "id": 4
+    },
+    {
+      "nombre": "Juan Gabriel Vásquez",
+      "nacionalidad": "Colombiana",
+      "anio_nacimiento": 1973,
+      "id": 9
+    },
+    {
+      "nombre": "Juan Ramón Jiménez",
+      "nacionalidad": "Española",
+      "anio_nacimiento": 1881,
+      "id": 33
+    },
+    {
+      "nombre": "Laura Restrepo",
+      "nacionalidad": "Colombiana",
+      "anio_nacimiento": 1950,
+      "id": 6
+    },
+    {
+      "nombre": "Lope De Vega",
+      "nacionalidad": "Española",
+      "anio_nacimiento": 1562,
+      "id": 35
+    },
+    {
+      "nombre": "Manuel Zapata Olivella",
+      "nacionalidad": "Colombiana",
+      "anio_nacimiento": 1920,
+      "id": 12
+    },
+    {
+      "nombre": "Marvel Moreno",
+      "nacionalidad": "Colombiana",
+      "anio_nacimiento": 1939,
+      "id": 14
+    },
+    {
+      "nombre": "Miguel De Cervantes",
+      "nacionalidad": "Española",
+      "anio_nacimiento": 1547,
+      "id": 22
+    },
+    {
+      "nombre": "Miguel De Unamuno",
+      "nacionalidad": "Española",
+      "anio_nacimiento": 1864,
+      "id": 27
+    },
+    {
+      "nombre": "Miguel Hernández",
+      "nacionalidad": "Española",
+      "anio_nacimiento": 1910,
+      "id": 34
+    },
+    {
+      "nombre": "Pedro Calderón De La Barca",
+      "nacionalidad": "Española",
+      "anio_nacimiento": 1600,
+      "id": 36
+    },
+    {
+      "nombre": "Piedad Bonnett",
+      "nacionalidad": "Colombiana",
+      "anio_nacimiento": 1951,
+      "id": 17
+    },
+    {
+      "nombre": "Pío Baroja",
+      "nacionalidad": "Española",
+      "anio_nacimiento": 1872,
+      "id": 28
+    },
+    {
+      "nombre": "Rafael Pombo",
+      "nacionalidad": "Colombiana",
+      "anio_nacimiento": 1833,
+      "id": 15
+    },
+    {
+      "nombre": "Rosa Montero",
+      "nacionalidad": "Española",
+      "anio_nacimiento": 1951,
+      "id": 38
+    },
+    {
+      "nombre": "Santiago Gamboa",
+      "nacionalidad": "Colombiana",
+      "anio_nacimiento": 1965,
+      "id": 19
+    },
+    {
+      "nombre": "Tomás González",
+      "nacionalidad": "Colombiana",
+      "anio_nacimiento": 1950,
+      "id": 10
+    },
+    {
+      "nombre": "William Ospina",
+      "nacionalidad": "Colombiana",
+      "anio_nacimiento": 1954,
+      "id": 18
+    },
+    {
+      "nombre": "Álvaro Mutis",
+      "nacionalidad": "Colombiana",
+      "anio_nacimiento": 1923,
+      "id": 5
+    }
+  ],
+  "libros": [
+    {
+      "id": 25,
+      "titulo": "Campos De Castilla",
+      "isbn": "9781694032867",
+      "anio_publicacion": 1912,
+      "ejemplares": 1,
+      "disponibles": 1,
+      "autor": {
+        "nombre": "Antonio Machado",
+        "nacionalidad": "Española",
+        "anio_nacimiento": 1875,
+        "id": 24
+      },
+      "categorias": [
+        {
+          "nombre": "poesia",
+          "descripcion": "Obras literarias en verso.",
+          "id": 6
+        }
+      ]
+    },
+    {
+      "id": 22,
+      "titulo": "Cantos Populares De Mi Tierra",
+      "isbn": "9789589729922",
+      "anio_publicacion": 1877,
+      "ejemplares": 1,
+      "disponibles": 1,
+      "autor": {
+        "nombre": "Candelario Obeso",
+        "nacionalidad": "Colombiana",
+        "anio_nacimiento": 1849,
+        "id": 21
+      },
+      "categorias": [
+        {
+          "nombre": "poesia",
+          "descripcion": "Obras literarias en verso.",
+          "id": 6
+        }
+      ]
+    },
+    {
+      "id": 13,
+      "titulo": "Changó, El Gran Putas",
+      "isbn": "9789586332354",
+      "anio_publicacion": 1983,
+      "ejemplares": 1,
+      "disponibles": 1,
+      "autor": {
+        "nombre": "Manuel Zapata Olivella",
+        "nacionalidad": "Colombiana",
+        "anio_nacimiento": 1920,
+        "id": 12
+      },
+      "categorias": [
+        {
+          "nombre": "novela",
+          "descripcion": "Narrativa de ficción extensa.",
+          "id": 2
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "titulo": "Cien Años De Soledad",
+      "isbn": "9789588774060",
+      "anio_publicacion": 1967,
+      "ejemplares": 1,
+      "disponibles": 1,
+      "autor": {
+        "nombre": "Gabriel García Márquez",
+        "nacionalidad": "Colombiana",
+        "anio_nacimiento": 1927,
+        "id": 2
+      },
+      "categorias": [
+        {
+          "nombre": "novela",
+          "descripcion": "Narrativa de ficción extensa.",
+          "id": 2
+        }
+      ]
+    },
+    {
+      "id": 40,
+      "titulo": "Corazón Tan Blanco",
+      "isbn": "9789707800847",
+      "anio_publicacion": 1992,
+      "ejemplares": 1,
+      "disponibles": 1,
+      "autor": {
+        "nombre": "Javier Marías",
+        "nacionalidad": "Española",
+        "anio_nacimiento": 1951,
+        "id": 39
+      },
+      "categorias": [
+        {
+          "nombre": "novela",
+          "descripcion": "Narrativa de ficción extensa.",
+          "id": 2
+        }
+      ]
+    },
+    {
+      "id": 16,
+      "titulo": "Cuentos Pintados",
+      "isbn": "9789589827352",
+      "anio_publicacion": 1867,
+      "ejemplares": 1,
+      "disponibles": 1,
+      "autor": {
+        "nombre": "Rafael Pombo",
+        "nacionalidad": "Colombiana",
+        "anio_nacimiento": 1833,
+        "id": 15
+      },
+      "categorias": [
+        {
+          "nombre": "literatura infantil",
+          "descripcion": "Obras dirigidas principalmente a lectores infantiles.",
+          "id": 5
+        },
+        {
+          "nombre": "cuento",
+          "descripcion": "Narraciones breves de ficción.",
+          "id": 9
+        }
+      ]
+    },
+    {
+      "id": 17,
+      "titulo": "De Sobremesa",
+      "isbn": "9788475174754",
+      "anio_publicacion": 1925,
+      "ejemplares": 1,
+      "disponibles": 1,
+      "autor": {
+        "nombre": "José Asunción Silva",
+        "nacionalidad": "Colombiana",
+        "anio_nacimiento": 1865,
+        "id": 16
+      },
+      "categorias": [
+        {
+          "nombre": "novela",
+          "descripcion": "Narrativa de ficción extensa.",
+          "id": 2
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "titulo": "Delirio",
+      "isbn": "9788466353540",
+      "anio_publicacion": 2004,
+      "ejemplares": 1,
+      "disponibles": 1,
+      "autor": {
+        "nombre": "Laura Restrepo",
+        "nacionalidad": "Colombiana",
+        "anio_nacimiento": 1950,
+        "id": 6
+      },
+      "categorias": [
+        {
+          "nombre": "novela",
+          "descripcion": "Narrativa de ficción extensa.",
+          "id": 2
+        }
+      ]
+    },
+    {
+      "id": 23,
+      "titulo": "Don Quijote De La Mancha",
+      "isbn": "9783538068926",
+      "anio_publicacion": 1605,
+      "ejemplares": 1,
+      "disponibles": 1,
+      "autor": {
+        "nombre": "Miguel De Cervantes",
+        "nacionalidad": "Española",
+        "anio_nacimiento": 1547,
+        "id": 22
+      },
+      "categorias": [
+        {
+          "nombre": "novela",
+          "descripcion": "Narrativa de ficción extensa.",
+          "id": 2
+        }
+      ]
+    },
+    {
+      "id": 8,
+      "titulo": "El Olvido Que Seremos",
+      "isbn": "9789584215000",
+      "anio_publicacion": 2006,
+      "ejemplares": 1,
+      "disponibles": 1,
+      "autor": {
+        "nombre": "Héctor Abad Faciolince",
+        "nacionalidad": "Colombiana",
+        "anio_nacimiento": 1958,
+        "id": 7
+      },
+      "categorias": [
+        {
+          "nombre": "memorias",
+          "descripcion": "Recuerdos y experiencias personales narrados por sus protagonistas.",
+          "id": 4
+        }
+      ]
+    },
+    {
+      "id": 35,
+      "titulo": "El Rayo Que No Cesa",
+      "isbn": "9789500362399",
+      "anio_publicacion": 1936,
+      "ejemplares": 1,
+      "disponibles": 1,
+      "autor": {
+        "nombre": "Miguel Hernández",
+        "nacionalidad": "Española",
+        "anio_nacimiento": 1910,
+        "id": 34
+      },
+      "categorias": [
+        {
+          "nombre": "poesia",
+          "descripcion": "Obras literarias en verso.",
+          "id": 6
+        }
+      ]
+    },
+    {
+      "id": 10,
+      "titulo": "El Ruido De Las Cosas Al Caer",
+      "isbn": "9786071110688",
+      "anio_publicacion": 2011,
+      "ejemplares": 1,
+      "disponibles": 1,
+      "autor": {
+        "nombre": "Juan Gabriel Vásquez",
+        "nacionalidad": "Colombiana",
+        "anio_nacimiento": 1973,
+        "id": 9
+      },
+      "categorias": [
+        {
+          "nombre": "novela",
+          "descripcion": "Narrativa de ficción extensa.",
+          "id": 2
+        }
+      ]
+    },
+    {
+      "id": 29,
+      "titulo": "El Árbol De La Ciencia",
+      "isbn": "9798764893556",
+      "anio_publicacion": 1911,
+      "ejemplares": 1,
+      "disponibles": 1,
+      "autor": {
+        "nombre": "Pío Baroja",
+        "nacionalidad": "Española",
+        "anio_nacimiento": 1872,
+        "id": 28
+      },
+      "categorias": [
+        {
+          "nombre": "novela",
+          "descripcion": "Narrativa de ficción extensa.",
+          "id": 2
+        }
+      ]
+    },
+    {
+      "id": 15,
+      "titulo": "En Diciembre Llegaban Las Brisas",
+      "isbn": "9788401380921",
+      "anio_publicacion": 1987,
+      "ejemplares": 1,
+      "disponibles": 1,
+      "autor": {
+        "nombre": "Marvel Moreno",
+        "nacionalidad": "Colombiana",
+        "anio_nacimiento": 1939,
+        "id": 14
+      },
+      "categorias": [
+        {
+          "nombre": "novela",
+          "descripcion": "Narrativa de ficción extensa.",
+          "id": 2
+        }
+      ]
+    },
+    {
+      "id": 33,
+      "titulo": "Entre Visillos",
+      "isbn": "9788423354924",
+      "anio_publicacion": 1958,
+      "ejemplares": 1,
+      "disponibles": 1,
+      "autor": {
+        "nombre": "Carmen Martín Gaite",
+        "nacionalidad": "Española",
+        "anio_nacimiento": 1925,
+        "id": 32
+      },
+      "categorias": [
+        {
+          "nombre": "novela",
+          "descripcion": "Narrativa de ficción extensa.",
+          "id": 2
+        }
+      ]
+    },
+    {
+      "id": 19,
+      "titulo": "Es Tarde Para El Hombre",
+      "isbn": "9789580427384",
+      "anio_publicacion": 1994,
+      "ejemplares": 1,
+      "disponibles": 1,
+      "autor": {
+        "nombre": "William Ospina",
+        "nacionalidad": "Colombiana",
+        "anio_nacimiento": 1954,
+        "id": 18
+      },
+      "categorias": [
+        {
+          "nombre": "ensayo",
+          "descripcion": "Textos de reflexión y análisis.",
+          "id": 7
+        }
+      ]
+    },
+    {
+      "id": 26,
+      "titulo": "Fortunata Y Jacinta",
+      "isbn": "9788475063904",
+      "anio_publicacion": 1887,
+      "ejemplares": 1,
+      "disponibles": 1,
+      "autor": {
+        "nombre": "Benito Pérez Galdós",
+        "nacionalidad": "Española",
+        "anio_nacimiento": 1843,
+        "id": 25
+      },
+      "categorias": [
+        {
+          "nombre": "novela",
+          "descripcion": "Narrativa de ficción extensa.",
+          "id": 2
+        }
+      ]
+    },
+    {
+      "id": 36,
+      "titulo": "Fuenteovejuna",
+      "isbn": "9788467814095",
+      "anio_publicacion": 1619,
+      "ejemplares": 1,
+      "disponibles": 1,
+      "autor": {
+        "nombre": "Lope De Vega",
+        "nacionalidad": "Española",
+        "anio_nacimiento": 1562,
+        "id": 35
+      },
+      "categorias": [
+        {
+          "nombre": "teatro",
+          "descripcion": "Obras dramáticas escritas para su representación.",
+          "id": 8
+        }
+      ]
+    },
+    {
+      "id": 31,
+      "titulo": "La Familia De Pascual Duarte",
+      "isbn": "9788423307326",
+      "anio_publicacion": 1942,
+      "ejemplares": 1,
+      "disponibles": 1,
+      "autor": {
+        "nombre": "Camilo José Cela",
+        "nacionalidad": "Española",
+        "anio_nacimiento": 1916,
+        "id": 30
+      },
+      "categorias": [
+        {
+          "nombre": "novela",
+          "descripcion": "Narrativa de ficción extensa.",
+          "id": 2
+        }
+      ]
+    },
+    {
+      "id": 39,
+      "titulo": "La Hija Del Caníbal",
+      "isbn": "9789504906087",
+      "anio_publicacion": 1997,
+      "ejemplares": 1,
+      "disponibles": 1,
+      "autor": {
+        "nombre": "Rosa Montero",
+        "nacionalidad": "Española",
+        "anio_nacimiento": 1951,
+        "id": 38
+      },
+      "categorias": [
+        {
+          "nombre": "novela",
+          "descripcion": "Narrativa de ficción extensa.",
+          "id": 2
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "titulo": "La Nieve Del Almirante",
+      "isbn": "9788420631769",
+      "anio_publicacion": 1986,
+      "ejemplares": 1,
+      "disponibles": 1,
+      "autor": {
+        "nombre": "Álvaro Mutis",
+        "nacionalidad": "Colombiana",
+        "anio_nacimiento": 1923,
+        "id": 5
+      },
+      "categorias": [
+        {
+          "nombre": "novela",
+          "descripcion": "Narrativa de ficción extensa.",
+          "id": 2
+        }
+      ]
+    },
+    {
+      "id": 42,
+      "titulo": "La Sombra Del Viento",
+      "isbn": "9784087605082",
+      "anio_publicacion": 2001,
+      "ejemplares": 1,
+      "disponibles": 1,
+      "autor": {
+        "nombre": "Carlos Ruiz Zafón",
+        "nacionalidad": "Española",
+        "anio_nacimiento": 1964,
+        "id": 41
+      },
+      "categorias": [
+        {
+          "nombre": "novela",
+          "descripcion": "Narrativa de ficción extensa.",
+          "id": 2
+        }
+      ]
+    },
+    {
+      "id": 41,
+      "titulo": "La Tabla De Flandes",
+      "isbn": "9788422649243",
+      "anio_publicacion": 1990,
+      "ejemplares": 1,
+      "disponibles": 1,
+      "autor": {
+        "nombre": "Arturo Pérez-Reverte",
+        "nacionalidad": "Española",
+        "anio_nacimiento": 1951,
+        "id": 40
+      },
+      "categorias": [
+        {
+          "nombre": "novela",
+          "descripcion": "Narrativa de ficción extensa.",
+          "id": 2
+        }
+      ]
+    },
+    {
+      "id": 21,
+      "titulo": "La Tejedora De Coronas",
+      "isbn": "9789589159286",
+      "anio_publicacion": 1982,
+      "ejemplares": 1,
+      "disponibles": 1,
+      "autor": {
+        "nombre": "Germán Espinosa",
+        "nacionalidad": "Colombiana",
+        "anio_nacimiento": 1938,
+        "id": 20
+      },
+      "categorias": [
+        {
+          "nombre": "novela",
+          "descripcion": "Narrativa de ficción extensa.",
+          "id": 2
+        }
+      ]
+    },
+    {
+      "id": 37,
+      "titulo": "La Vida Es Sueño",
+      "isbn": "9780729304016",
+      "anio_publicacion": 1635,
+      "ejemplares": 1,
+      "disponibles": 1,
+      "autor": {
+        "nombre": "Pedro Calderón De La Barca",
+        "nacionalidad": "Española",
+        "anio_nacimiento": 1600,
+        "id": 36
+      },
+      "categorias": [
+        {
+          "nombre": "teatro",
+          "descripcion": "Obras dramáticas escritas para su representación.",
+          "id": 8
+        }
+      ]
+    },
+    {
+      "id": 9,
+      "titulo": "La Virgen De Los Sicarios",
+      "isbn": "9788466368506",
+      "anio_publicacion": 1994,
+      "ejemplares": 1,
+      "disponibles": 1,
+      "autor": {
+        "nombre": "Fernando Vallejo",
+        "nacionalidad": "Colombiana",
+        "anio_nacimiento": 1942,
+        "id": 8
+      },
+      "categorias": [
+        {
+          "nombre": "novela",
+          "descripcion": "Narrativa de ficción extensa.",
+          "id": 2
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "titulo": "La Vorágine",
+      "isbn": "9788420618388",
+      "anio_publicacion": 1924,
+      "ejemplares": 1,
+      "disponibles": 1,
+      "autor": {
+        "nombre": "José Eustasio Rivera",
+        "nacionalidad": "Colombiana",
+        "anio_nacimiento": 1888,
+        "id": 4
+      },
+      "categorias": [
+        {
+          "nombre": "novela",
+          "descripcion": "Narrativa de ficción extensa.",
+          "id": 2
+        }
+      ]
+    },
+    {
+      "id": 18,
+      "titulo": "Lo Que No Tiene Nombre",
+      "isbn": "9789870433446",
+      "anio_publicacion": 2013,
+      "ejemplares": 1,
+      "disponibles": 1,
+      "autor": {
+        "nombre": "Piedad Bonnett",
+        "nacionalidad": "Colombiana",
+        "anio_nacimiento": 1951,
+        "id": 17
+      },
+      "categorias": [
+        {
+          "nombre": "memorias",
+          "descripcion": "Recuerdos y experiencias personales narrados por sus protagonistas.",
+          "id": 4
+        }
+      ]
+    },
+    {
+      "id": 12,
+      "titulo": "Los Ejércitos",
+      "isbn": "9788483103913",
+      "anio_publicacion": 2007,
+      "ejemplares": 1,
+      "disponibles": 1,
+      "autor": {
+        "nombre": "Evelio Rosero",
+        "nacionalidad": "Colombiana",
+        "anio_nacimiento": 1958,
+        "id": 11
+      },
+      "categorias": [
+        {
+          "nombre": "novela",
+          "descripcion": "Narrativa de ficción extensa.",
+          "id": 2
+        }
+      ]
+    },
+    {
+      "id": 27,
+      "titulo": "Los Pazos De Ulloa",
+      "isbn": "9780141392950",
+      "anio_publicacion": 1886,
+      "ejemplares": 1,
+      "disponibles": 1,
+      "autor": {
+        "nombre": "Emilia Pardo Bazán",
+        "nacionalidad": "Española",
+        "anio_nacimiento": 1851,
+        "id": 26
+      },
+      "categorias": [
+        {
+          "nombre": "novela",
+          "descripcion": "Narrativa de ficción extensa.",
+          "id": 2
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "titulo": "María",
+      "isbn": "9780613862950",
+      "anio_publicacion": 1867,
+      "ejemplares": 1,
+      "disponibles": 1,
+      "autor": {
+        "nombre": "Jorge Isaacs",
+        "nacionalidad": "Colombiana",
+        "anio_nacimiento": 1837,
+        "id": 3
+      },
+      "categorias": [
+        {
+          "nombre": "novela",
+          "descripcion": "Narrativa de ficción extensa.",
+          "id": 2
+        }
+      ]
+    },
+    {
+      "id": 30,
+      "titulo": "Nada",
+      "isbn": "9788423334803",
+      "anio_publicacion": 1944,
+      "ejemplares": 1,
+      "disponibles": 1,
+      "autor": {
+        "nombre": "Carmen Laforet",
+        "nacionalidad": "Española",
+        "anio_nacimiento": 1921,
+        "id": 29
+      },
+      "categorias": [
+        {
+          "nombre": "novela",
+          "descripcion": "Narrativa de ficción extensa.",
+          "id": 2
+        }
+      ]
+    },
+    {
+      "id": 28,
+      "titulo": "Niebla",
+      "isbn": "9781981498024",
+      "anio_publicacion": 1914,
+      "ejemplares": 1,
+      "disponibles": 1,
+      "autor": {
+        "nombre": "Miguel De Unamuno",
+        "nacionalidad": "Española",
+        "anio_nacimiento": 1864,
+        "id": 27
+      },
+      "categorias": [
+        {
+          "nombre": "novela",
+          "descripcion": "Narrativa de ficción extensa.",
+          "id": 2
+        }
+      ]
+    },
+    {
+      "id": 20,
+      "titulo": "Perder Es Cuestión De Método",
+      "isbn": "9788439701897",
+      "anio_publicacion": 1997,
+      "ejemplares": 1,
+      "disponibles": 1,
+      "autor": {
+        "nombre": "Santiago Gamboa",
+        "nacionalidad": "Colombiana",
+        "anio_nacimiento": 1965,
+        "id": 19
+      },
+      "categorias": [
+        {
+          "nombre": "novela",
+          "descripcion": "Narrativa de ficción extensa.",
+          "id": 2
+        }
+      ]
+    },
+    {
+      "id": 34,
+      "titulo": "Platero Y Yo",
+      "isbn": "9788426138149",
+      "anio_publicacion": 1914,
+      "ejemplares": 1,
+      "disponibles": 1,
+      "autor": {
+        "nombre": "Juan Ramón Jiménez",
+        "nacionalidad": "Española",
+        "anio_nacimiento": 1881,
+        "id": 33
+      },
+      "categorias": [
+        {
+          "nombre": "literatura infantil",
+          "descripcion": "Obras dirigidas principalmente a lectores infantiles.",
+          "id": 5
+        }
+      ]
+    },
+    {
+      "id": 32,
+      "titulo": "Primera Memoria",
+      "isbn": "9788401426049",
+      "anio_publicacion": 1959,
+      "ejemplares": 1,
+      "disponibles": 1,
+      "autor": {
+        "nombre": "Ana María Matute",
+        "nacionalidad": "Española",
+        "anio_nacimiento": 1925,
+        "id": 31
+      },
+      "categorias": [
+        {
+          "nombre": "novela",
+          "descripcion": "Narrativa de ficción extensa.",
+          "id": 2
+        }
+      ]
+    },
+    {
+      "id": 11,
+      "titulo": "Primero Estaba El Mar",
+      "isbn": "9781583480441",
+      "anio_publicacion": 1983,
+      "ejemplares": 1,
+      "disponibles": 1,
+      "autor": {
+        "nombre": "Tomás González",
+        "nacionalidad": "Colombiana",
+        "anio_nacimiento": 1950,
+        "id": 10
+      },
+      "categorias": [
+        {
+          "nombre": "novela",
+          "descripcion": "Narrativa de ficción extensa.",
+          "id": 2
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "titulo": "Relato De Un Náufrago",
+      "isbn": "9780307475381",
+      "anio_publicacion": 1970,
+      "ejemplares": 1,
+      "disponibles": 1,
+      "autor": {
+        "nombre": "Gabriel García Márquez",
+        "nacionalidad": "Colombiana",
+        "anio_nacimiento": 1927,
+        "id": 2
+      },
+      "categorias": [
+        {
+          "nombre": "cronica",
+          "descripcion": "Relatos periodísticos y narrativos de hechos reales.",
+          "id": 3
+        }
+      ]
+    },
+    {
+      "id": 38,
+      "titulo": "Rimas Y Leyendas",
+      "isbn": "9788470022180",
+      "anio_publicacion": 1871,
+      "ejemplares": 1,
+      "disponibles": 1,
+      "autor": {
+        "nombre": "Gustavo Adolfo Bécquer",
+        "nacionalidad": "Española",
+        "anio_nacimiento": 1836,
+        "id": 37
+      },
+      "categorias": [
+        {
+          "nombre": "poesia",
+          "descripcion": "Obras literarias en verso.",
+          "id": 6
+        },
+        {
+          "nombre": "cuento",
+          "descripcion": "Narraciones breves de ficción.",
+          "id": 9
+        }
+      ]
+    },
+    {
+      "id": 24,
+      "titulo": "Romancero Gitano",
+      "isbn": "9781678733612",
+      "anio_publicacion": 1928,
+      "ejemplares": 1,
+      "disponibles": 1,
+      "autor": {
+        "nombre": "Federico García Lorca",
+        "nacionalidad": "Española",
+        "anio_nacimiento": 1898,
+        "id": 23
+      },
+      "categorias": [
+        {
+          "nombre": "poesia",
+          "descripcion": "Obras literarias en verso.",
+          "id": 6
+        }
+      ]
+    },
+    {
+      "id": 14,
+      "titulo": "¡Que Viva La Música!",
+      "isbn": "9781456118990",
+      "anio_publicacion": 1977,
+      "ejemplares": 1,
+      "disponibles": 1,
+      "autor": {
+        "nombre": "Andrés Caicedo",
+        "nacionalidad": "Colombiana",
+        "anio_nacimiento": 1951,
+        "id": 13
+      },
+      "categorias": [
+        {
+          "nombre": "novela",
+          "descripcion": "Narrativa de ficción extensa.",
+          "id": 2
+        }
+      ]
+    }
+  ],
+  "categorias": [
+    {
+      "nombre": "cronica",
+      "descripcion": "Relatos periodísticos y narrativos de hechos reales.",
+      "id": 3
+    },
+    {
+      "nombre": "cuento",
+      "descripcion": "Narraciones breves de ficción.",
+      "id": 9
+    },
+    {
+      "nombre": "ensayo",
+      "descripcion": "Textos de reflexión y análisis.",
+      "id": 7
+    },
+    {
+      "nombre": "literatura infantil",
+      "descripcion": "Obras dirigidas principalmente a lectores infantiles.",
+      "id": 5
+    },
+    {
+      "nombre": "memorias",
+      "descripcion": "Recuerdos y experiencias personales narrados por sus protagonistas.",
+      "id": 4
+    },
+    {
+      "nombre": "novela",
+      "descripcion": "Narrativa de ficción extensa.",
+      "id": 2
+    },
+    {
+      "nombre": "poesia",
+      "descripcion": "Obras literarias en verso.",
+      "id": 6
+    },
+    {
+      "nombre": "teatro",
+      "descripcion": "Obras dramáticas escritas para su representación.",
+      "id": 8
+    }
+  ]
+}

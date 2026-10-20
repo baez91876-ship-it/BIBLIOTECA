@@ -51,7 +51,10 @@ En el servicio de la API, configura `CORS_ALLOWED_ORIGINS` con el origen de
 Pages (por ejemplo, `https://baez91876-ship-it.github.io`, sin la ruta del
 repositorio) y vuelve a desplegarla. El valor vacío de ejemplo solo sirve para
 uso local o cuando la interfaz y API comparten origen; `127.0.0.1` no es una
-URL pública. No publiques la interfaz antes de configurar una API accesible.
+URL pública. Mientras la API pública no esté configurada, Pages muestra la
+copia de solo lectura de `catalogo.json`. Actualiza ese archivo desde la API
+local y súbelo de nuevo cuando quieras refrescar la copia pública. Para habilitar
+altas, ediciones, eliminaciones y préstamos en vivo, configura una API pública.
 
 ## Pruebas
 

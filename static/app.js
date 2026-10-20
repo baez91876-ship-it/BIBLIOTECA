@@ -15,18 +15,22 @@ const pagesApiNotConfigured =
   window.location.hostname.endsWith(".github.io") && !apiBaseUrl;
 
 if (pagesApiNotConfigured) {
-  document.querySelector("#connection-label").textContent = "API pendiente";
-  document.querySelector("#database-label").textContent = "API sin configurar";
+  document.querySelector("#connection-label").textContent = "Catálogo estático";
+  document.querySelector("#database-label").textContent = "Solo lectura";
+  document.querySelector("#add-book").hidden = true;
+  document.querySelector("#refresh-books").hidden = true;
 }
 
 function showNotice(message) {
   notice.textContent = message;
+  notice.classList.toggle("read-only-notice", pagesApiNotConfigured);
   notice.hidden = false;
 }
 
 function hideNotice() {
   notice.hidden = true;
   notice.textContent = "";
+  notice.classList.remove("read-only-notice");
 }
 
 async function apiRequest(path, options = {}) {
@@ -88,26 +92,28 @@ function renderBooks() {
     titleCell.append(title);
 
     const actions = document.createElement("td");
-    const actionGroup = document.createElement("div");
-    actionGroup.className = "row-actions";
-    const editButton = document.createElement("button");
-    editButton.type = "button";
-    editButton.className = "icon-button";
-    editButton.dataset.action = "edit";
-    editButton.dataset.id = String(book.id);
-    editButton.setAttribute("aria-label", `Editar ${book.titulo}`);
-    editButton.title = "Editar libro";
-    editButton.textContent = "✎";
-    const deleteButton = document.createElement("button");
-    deleteButton.type = "button";
-    deleteButton.className = "icon-button delete-button";
-    deleteButton.dataset.action = "delete";
-    deleteButton.dataset.id = String(book.id);
-    deleteButton.setAttribute("aria-label", `Eliminar ${book.titulo}`);
-    deleteButton.title = "Eliminar libro";
-    deleteButton.textContent = "⌫";
-    actionGroup.append(editButton, deleteButton);
-    actions.append(actionGroup);
+    if (!pagesApiNotConfigured) {
+      const actionGroup = document.createElement("div");
+      actionGroup.className = "row-actions";
+      const editButton = document.createElement("button");
+      editButton.type = "button";
+      editButton.className = "icon-button";
+      editButton.dataset.action = "edit";
+      editButton.dataset.id = String(book.id);
+      editButton.setAttribute("aria-label", `Editar ${book.titulo}`);
+      editButton.title = "Editar libro";
+      editButton.textContent = "✎";
+      const deleteButton = document.createElement("button");
+      deleteButton.type = "button";
+      deleteButton.className = "icon-button delete-button";
+      deleteButton.dataset.action = "delete";
+      deleteButton.dataset.id = String(book.id);
+      deleteButton.setAttribute("aria-label", `Eliminar ${book.titulo}`);
+      deleteButton.title = "Eliminar libro";
+      deleteButton.textContent = "⌫";
+      actionGroup.append(editButton, deleteButton);
+      actions.append(actionGroup);
+    }
 
     row.append(
       titleCell,
@@ -122,6 +128,7 @@ function renderBooks() {
   }
 
   document.querySelector("#total-count").textContent = String(books.length);
+  document.querySelector("#author-count").textContent = String(authors.length);
   document.querySelector("#copy-count").textContent = String(
     books.reduce((total, book) => total + book.ejemplares, 0),
   );
@@ -144,6 +151,19 @@ function renderBooks() {
 async function loadBooks() {
   hideNotice();
   try {
+    if (pagesApiNotConfigured) {
+      const response = await fetch("catalogo.json");
+      if (!response.ok) {
+        throw new Error(`Error ${response.status}: no se pudo cargar el catálogo.`);
+      }
+      ({ libros: books, autores: authors, categorias: categories } =
+        await response.json());
+      renderBooks();
+      showNotice(
+        `Catálogo estático: ${books.length} libros de ${authors.length} autores. Vista de solo lectura; los cambios requieren una API pública.`,
+      );
+      return;
+    }
     [books, authors, categories] = await Promise.all([
       apiRequest("/libros?limit=100"),
       apiRequest("/autores?limit=100"),

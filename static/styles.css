@@ -75,7 +75,7 @@ h1 { margin-bottom: 7px; font-family: "Playfair Display", serif; font-size: clam
 .button-primary > span { font-size: 18px; font-weight: 400; line-height: 0; }
 .button-secondary { border-color: #e7e6df; background: #fff; color: #566257; }
 .button-secondary:hover { background: #f7f8f4; }
-.stats-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 15px; margin-bottom: 25px; }
+.stats-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 15px; margin-bottom: 25px; }
 .stat-card { position: relative; min-height: 120px; overflow: hidden; padding: 19px 20px; border: 1px solid #eeece6; border-radius: 9px; background: #fff; }
 .stat-label { font-size: 9px; letter-spacing: 1px; }
 .stat-value { margin: 7px 0 2px; font-family: "Playfair Display", serif; font-size: 29px; line-height: 1.1; }
@@ -120,6 +120,7 @@ th:last-child, td:last-child { width: 100px; text-align: right; }
 .page-footer { padding: 24px 0 20px; color: #a0a39c; font-family: "Playfair Display", serif; font-size: 11px; text-align: center; }
 .page-footer span { margin-left: 4px; color: var(--orange); }
 .notice { margin: 0 20px 12px; padding: 10px 12px; border-radius: 6px; background: #f9eeea; color: #a74e43; font-size: 11px; }
+.notice.read-only-notice { background: #eef3ec; color: #526951; }
 .book-dialog { width: min(440px, calc(100vw - 32px)); padding: 25px; border: 1px solid var(--line); border-radius: 12px; background: #fff; color: var(--ink); box-shadow: 0 25px 80px #1c30222b; }
 .book-dialog::backdrop { background: #1e2a2390; backdrop-filter: blur(2px); }
 .dialog-heading { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 22px; }
@@ -157,7 +158,7 @@ th:last-child, td:last-child { width: 100px; text-align: right; }
   .page-heading .button { flex-shrink: 0; padding: 0 10px; font-size: 10px; }
   h1 { font-size: 33px; }
   .subtitle { max-width: 220px; font-size: 11px; line-height: 1.5; }
-  .stats-grid { gap: 8px; margin-bottom: 17px; }
+  .stats-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-bottom: 17px; }
   .stat-card { min-height: 98px; padding: 13px 10px; }
   .stat-label { max-width: 95px; font-size: 8px; line-height: 1.4; }
   .stat-value { font-size: 24px; }

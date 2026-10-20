@@ -125,6 +125,14 @@ def configuracion_api():
     )
 
 
+@app.get("/catalogo.json", include_in_schema=False)
+def catalogo_estatico():
+    return FileResponse(
+        PROJECT_ROOT / "catalogo.json",
+        media_type="application/json",
+    )
+
+
 @app.get("/health", include_in_schema=False)
 def health():
     with engine.connect() as connection:
