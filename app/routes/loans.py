@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Query, status
+from fastapi import APIRouter, Query, Response, status
 
 from ..controllers import loans
 from ..core.dependencies import PaginationDep, SessionDep
@@ -7,6 +7,7 @@ from ..schemas.prestamo import (
     DevolucionCreate,
     EstadoPrestamo,
     PrestamoCreate,
+    PrestamoPatch,
     PrestamoRead,
 )
 
@@ -39,3 +40,16 @@ def devolver_prestamo(
     prestamo_id: int, data: DevolucionCreate, db: SessionDep
 ) -> Prestamo:
     return loans.return_loan(prestamo_id, data, db)
+
+
+@router.patch("/{prestamo_id}", response_model=PrestamoRead)
+def actualizar_prestamo(
+    prestamo_id: int, data: PrestamoPatch, db: SessionDep
+) -> Prestamo:
+    return loans.patch_loan(prestamo_id, data, db)
+
+
+@router.delete("/{prestamo_id}", status_code=status.HTTP_204_NO_CONTENT)
+def eliminar_prestamo(prestamo_id: int, db: SessionDep) -> Response:
+    loans.delete_loan(prestamo_id, db)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)

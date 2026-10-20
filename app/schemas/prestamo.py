@@ -24,6 +24,10 @@ class DevolucionCreate(BaseModel):
     fecha_devolucion: date = Field(default_factory=date.today)
 
 
+class PrestamoPatch(BaseModel):
+    fecha_limite: date
+
+
 class PrestamoRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 

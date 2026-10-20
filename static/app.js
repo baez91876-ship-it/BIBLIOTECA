@@ -6,19 +6,110 @@ const dialog = document.querySelector("#book-dialog");
 const form = document.querySelector("#book-form");
 const notice = document.querySelector("#notice");
 const searchInput = document.querySelector("#search");
+const booksView = document.querySelector("#books-view");
+const managementView = document.querySelector("#management-view");
+const managementList = document.querySelector("#management-list");
+const managementSearch = document.querySelector("#management-search");
+const recordDialog = document.querySelector("#record-dialog");
+const recordForm = document.querySelector("#record-form");
+const recordFields = document.querySelector("#record-fields");
+const recordError = document.querySelector("#record-error");
+
 let books = [];
 let authors = [];
 let categories = [];
+let members = [];
+let loans = [];
 let editingBookId = null;
+let activeView = "libros";
+let activeRecordId = null;
 const apiBaseUrl = (window.BIBLIOTECA_API_URL || "").replace(/\/+$/, "");
 const pagesApiNotConfigured =
   window.location.hostname.endsWith(".github.io") && !apiBaseUrl;
+
+const resources = {
+  autores: {
+    title: "Autores",
+    singular: "autor",
+    endpoint: "/autores",
+    records: () => authors,
+    columns: [
+      ["Nombre", (item) => item.nombre],
+      ["Nacionalidad", (item) => item.nacionalidad],
+      ["Nacimiento", (item) => item.anio_nacimiento],
+    ],
+    fields: [
+      { name: "nombre", label: "Nombre", type: "text", required: true, maxLength: 100 },
+      { name: "nacionalidad", label: "Nacionalidad", type: "text", maxLength: 60 },
+      { name: "anio_nacimiento", label: "Año de nacimiento", type: "number", min: 1000, max: new Date().getFullYear() },
+    ],
+  },
+  categorias: {
+    title: "Categorías",
+    singular: "categoría",
+    endpoint: "/categorias",
+    records: () => categories,
+    columns: [
+      ["Nombre", (item) => item.nombre],
+      ["Descripción", (item) => item.descripcion],
+    ],
+    fields: [
+      { name: "nombre", label: "Nombre", type: "text", required: true, minLength: 3, maxLength: 50 },
+      { name: "descripcion", label: "Descripción", type: "text", maxLength: 200 },
+    ],
+  },
+  socios: {
+    title: "Socios",
+    singular: "socio",
+    endpoint: "/socios",
+    records: () => members,
+    columns: [
+      ["Nombre", (item) => item.nombre],
+      ["Correo", (item) => item.email],
+      ["Teléfono", (item) => item.telefono],
+      ["Estado", (item) => item.activo ? "Activo" : "Inactivo"],
+      ["Fecha de alta", (item) => new Date(item.fecha_alta).toLocaleDateString("es")],
+    ],
+    fields: [
+      { name: "nombre", label: "Nombre", type: "text", required: true, minLength: 2, maxLength: 100 },
+      { name: "email", label: "Correo electrónico", type: "email", required: true, maxLength: 150 },
+      { name: "telefono", label: "Teléfono", type: "tel", minLength: 7, maxLength: 15 },
+      { name: "activo", label: "Estado", type: "boolean", required: true, options: [["true", "Activo"], ["false", "Inactivo"]] },
+    ],
+  },
+  prestamos: {
+    title: "Préstamos",
+    singular: "préstamo",
+    endpoint: "/prestamos",
+    records: () => loans,
+    columns: [
+      ["Libro", (item) => item.libro.titulo],
+      ["Socio", (item) => item.socio.nombre],
+      ["Préstamo", (item) => item.fecha_prestamo],
+      ["Fecha límite", (item) => item.fecha_limite],
+      ["Estado", (item) => item.estado],
+      ["Multa", (item) => `$${Number(item.multa).toFixed(2)}`],
+    ],
+    fields: [
+      { name: "libro_id", label: "Libro", type: "reference", source: "libros", required: true },
+      { name: "socio_id", label: "Socio activo", type: "reference", source: "socios", required: true },
+      { name: "fecha_prestamo", label: "Fecha del préstamo (opcional)", type: "date" },
+      { name: "dias", label: "Duración en días", type: "number", min: 1, max: 30, value: 14, required: true },
+    ],
+    editFields: [
+      { name: "fecha_limite", label: "Fecha límite", type: "date", required: true },
+    ],
+  },
+};
 
 if (pagesApiNotConfigured) {
   document.querySelector("#connection-label").textContent = "Catálogo estático";
   document.querySelector("#database-label").textContent = "Solo lectura";
   document.querySelector("#add-book").hidden = true;
   document.querySelector("#refresh-books").hidden = true;
+  for (const link of document.querySelectorAll(".nav-link[data-view]:not([data-view='libros'])")) {
+    link.hidden = true;
+  }
 }
 
 function showNotice(message) {
@@ -63,11 +154,25 @@ async function apiRequest(path, options = {}) {
   return response.json();
 }
 
+async function listAll(path) {
+  const records = [];
+  for (let skip = 0; ; skip += 100) {
+    const page = await apiRequest(`${path}?skip=${skip}&limit=100`);
+    records.push(...page);
+    if (page.length < 100) return records;
+  }
+}
+
 function createCell(text, className = "") {
   const cell = document.createElement("td");
   if (className) cell.className = className;
-  cell.textContent = text;
+  cell.textContent = text ?? "—";
   return cell;
+}
+
+function localDateString(date = new Date()) {
+  const localDate = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
+  return localDate.toISOString().slice(0, 10);
 }
 
 function renderBooks() {
@@ -165,9 +270,9 @@ async function loadBooks() {
       return;
     }
     [books, authors, categories] = await Promise.all([
-      apiRequest("/libros?limit=100"),
-      apiRequest("/autores?limit=100"),
-      apiRequest("/categorias?limit=100"),
+      listAll("/libros"),
+      listAll("/autores"),
+      listAll("/categorias"),
     ]);
     renderBooks();
   } catch (error) {
@@ -175,7 +280,136 @@ async function loadBooks() {
   }
 }
 
-function openDialog(book = null) {
+async function loadResource(resourceName) {
+  const config = resources[resourceName];
+  const managementNotice = document.querySelector("#management-notice");
+  managementNotice.hidden = true;
+  try {
+    if (resourceName === "prestamos") {
+      [loans, books, members] = await Promise.all([
+        listAll(config.endpoint),
+        listAll("/libros"),
+        listAll("/socios"),
+      ]);
+    } else {
+      const records = await listAll(config.endpoint);
+      if (resourceName === "autores") authors = records;
+      if (resourceName === "categorias") categories = records;
+      if (resourceName === "socios") members = records;
+    }
+    renderManagement(resourceName);
+  } catch (error) {
+    managementNotice.textContent = `No se pudieron cargar ${config.title.toLocaleLowerCase("es")}: ${error.message}`;
+    managementNotice.hidden = false;
+  }
+}
+
+function setView(viewName) {
+  activeView = viewName;
+  booksView.hidden = viewName !== "libros";
+  managementView.hidden = viewName === "libros";
+  for (const link of document.querySelectorAll(".nav-link[data-view]")) {
+    const selected = link.dataset.view === viewName;
+    link.classList.toggle("active", selected);
+    if (selected) link.setAttribute("aria-current", "page");
+    else link.removeAttribute("aria-current");
+  }
+  if (viewName === "libros") {
+    loadBooks();
+  } else {
+    managementSearch.value = "";
+    loadResource(viewName);
+  }
+}
+
+function renderManagement(resourceName) {
+  const config = resources[resourceName];
+  const records = config.records();
+  const query = managementSearch.value.trim().toLocaleLowerCase("es");
+  const visibleRecords = records.filter((record) =>
+    JSON.stringify(record).toLocaleLowerCase("es").includes(query),
+  );
+  const head = document.querySelector("#management-head");
+  head.replaceChildren();
+  for (const [label] of config.columns) {
+    const cell = document.createElement("th");
+    cell.scope = "col";
+    cell.textContent = label;
+    head.append(cell);
+  }
+  const actionsHeading = document.createElement("th");
+  actionsHeading.scope = "col";
+  actionsHeading.className = "management-actions";
+  actionsHeading.innerHTML = '<span class="visually-hidden">Acciones</span>';
+  head.append(actionsHeading);
+
+  managementList.replaceChildren();
+  for (const record of visibleRecords) {
+    const row = document.createElement("tr");
+    for (const [, getValue] of config.columns) {
+      row.append(createCell(String(getValue(record) ?? "—")));
+    }
+    const actions = document.createElement("td");
+    actions.className = "management-actions";
+    const actionGroup = document.createElement("div");
+    actionGroup.className = "row-actions";
+    if (record.estado !== "devuelto") {
+      actionGroup.append(
+        createActionButton("edit", record.id, `Editar ${config.singular}`, "✎"),
+      );
+      actionGroup.append(
+        createActionButton("delete", record.id, `Eliminar ${config.singular}`, "⌫", true),
+      );
+      if (resourceName === "prestamos") {
+        actionGroup.append(
+          createActionButton("return", record.id, "Registrar devolución", "✓"),
+        );
+      }
+    } else if (resourceName !== "prestamos") {
+      actionGroup.append(
+        createActionButton("edit", record.id, `Editar ${config.singular}`, "✎"),
+      );
+      actionGroup.append(
+        createActionButton("delete", record.id, `Eliminar ${config.singular}`, "⌫", true),
+      );
+    }
+    actions.append(actionGroup);
+    row.append(actions);
+    managementList.append(row);
+  }
+
+  document.querySelector("#management-title").firstChild.textContent = config.title;
+  document.querySelector("#management-table-title").textContent = `Todos los registros`;
+  document.querySelector("#management-table-description").textContent =
+    `Administra ${config.title.toLocaleLowerCase("es")} de la biblioteca.`;
+  document.querySelector("#management-description").textContent =
+    `Crea, consulta y actualiza ${config.title.toLocaleLowerCase("es")}.`;
+  document.querySelector("#add-record").innerHTML =
+    `<span aria-hidden="true">＋</span> Añadir ${config.singular}`;
+  document.querySelector("#management-count").textContent =
+    `${visibleRecords.length} ${visibleRecords.length === 1 ? config.singular : `${config.singular}s`}`;
+  document.querySelector("#management-empty-title").textContent =
+    records.length ? "No encontramos registros" : `Aún no hay ${config.title.toLocaleLowerCase("es")}`;
+  document.querySelector("#management-empty-description").textContent =
+    records.length ? "Prueba con otro término de búsqueda." : `Añade el primer ${config.singular}.`;
+  document.querySelector("#management-empty").hidden = visibleRecords.length !== 0;
+  document.querySelector("#add-record").disabled =
+    resourceName === "prestamos" && (books.length === 0 || !members.some((member) => member.activo));
+}
+
+function createActionButton(action, id, label, symbol, destructive = false) {
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = `icon-button${destructive ? " delete-button" : ""}`;
+  button.dataset.action = action;
+  button.dataset.id = String(id);
+  button.setAttribute("aria-label", label);
+  button.title = label;
+  button.textContent = symbol;
+  return button;
+}
+
+function openBookDialog(book = null) {
   editingBookId = book?.id ?? null;
   form.reset();
   document.querySelector("#dialog-title").textContent = book ? "Editar libro" : "Añadir libro";
@@ -205,8 +439,73 @@ function openDialog(book = null) {
   document.querySelector("#title").focus();
 }
 
-document.querySelector("#add-book").addEventListener("click", () => openDialog());
-document.querySelector("#empty-add-book").addEventListener("click", () => openDialog());
+function openRecordDialog(record = null) {
+  const config = resources[activeView];
+  activeRecordId = record?.id ?? null;
+  const fields = activeRecordId !== null && config.editFields
+    ? config.editFields
+    : config.fields;
+  recordFields.replaceChildren();
+  document.querySelector("#record-dialog-title").textContent =
+    `${record ? "Editar" : "Añadir"} ${config.singular}`;
+  document.querySelector("#save-record").textContent =
+    record ? "Guardar cambios" : `Guardar ${config.singular}`;
+  recordError.hidden = true;
+
+  for (const field of fields) {
+    const label = document.createElement("label");
+    const input = field.type === "reference" || field.type === "boolean"
+      ? document.createElement("select")
+      : document.createElement("input");
+    input.id = `record-${field.name}`;
+    input.name = field.name;
+    input.required = Boolean(field.required);
+    if (field.type === "reference" || field.type === "boolean") {
+      const placeholder = new Option(`Selecciona ${field.label.toLocaleLowerCase("es")}`, "");
+      input.add(placeholder);
+      const options = field.type === "boolean"
+        ? field.options
+        : (field.source === "libros"
+          ? books.map((book) => [String(book.id), book.titulo])
+          : members.filter((member) => member.activo).map((member) => [String(member.id), member.nombre]));
+      for (const [value, text] of options) input.add(new Option(text, value));
+    } else {
+      input.type = field.type;
+      if (field.min !== undefined) input.min = String(field.min);
+      if (field.max !== undefined) input.max = String(field.max);
+      if (field.minLength !== undefined) input.minLength = field.minLength;
+      if (field.maxLength !== undefined) input.maxLength = field.maxLength;
+      if (field.value !== undefined) input.value = String(field.value);
+    }
+    if (record && record[field.name] !== undefined && record[field.name] !== null) {
+      input.value = String(record[field.name]);
+    }
+    label.htmlFor = input.id;
+    label.textContent = field.label;
+    recordFields.append(label, input);
+  }
+  recordDialog.showModal();
+  recordFields.querySelector("input, select")?.focus();
+}
+
+function buildRecordPayload(fields) {
+  const payload = {};
+  for (const field of fields) {
+    const value = document.querySelector(`#record-${field.name}`).value.trim();
+    if (value === "") continue;
+    if (field.type === "number" || field.type === "reference") {
+      payload[field.name] = Number(value);
+    } else if (field.type === "boolean") {
+      payload[field.name] = value === "true";
+    } else {
+      payload[field.name] = value;
+    }
+  }
+  return payload;
+}
+
+document.querySelector("#add-book").addEventListener("click", () => openBookDialog());
+document.querySelector("#empty-add-book").addEventListener("click", () => openBookDialog());
 document.querySelector("#close-dialog").addEventListener("click", () => dialog.close());
 document.querySelector("#cancel-dialog").addEventListener("click", () => dialog.close());
 document.querySelector("#refresh-books").addEventListener("click", loadBooks);
@@ -252,7 +551,7 @@ bookList.addEventListener("click", async (event) => {
   if (!book) return;
 
   if (button.dataset.action === "edit") {
-    openDialog(book);
+    openBookDialog(book);
     return;
   }
   if (!window.confirm(`¿Eliminar "${book.titulo}" de la colección?`)) return;
@@ -265,4 +564,82 @@ bookList.addEventListener("click", async (event) => {
   }
 });
 
+document.querySelectorAll(".nav-link[data-view]").forEach((link) => {
+  link.addEventListener("click", () => setView(link.dataset.view));
+});
+document.querySelector("#add-record").addEventListener("click", () => openRecordDialog());
+document.querySelector("#refresh-records").addEventListener("click", () => loadResource(activeView));
+managementSearch.addEventListener("input", () => renderManagement(activeView));
+document.querySelector("#close-record-dialog").addEventListener("click", () => recordDialog.close());
+document.querySelector("#cancel-record-dialog").addEventListener("click", () => recordDialog.close());
+
+recordForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const config = resources[activeView];
+  const fields = activeRecordId !== null && config.editFields ? config.editFields : config.fields;
+  const saveButton = document.querySelector("#save-record");
+  saveButton.disabled = true;
+  recordError.hidden = true;
+  try {
+    const path = activeRecordId === null
+      ? config.endpoint
+      : `${config.endpoint}/${activeRecordId}`;
+    await apiRequest(path, {
+      method: activeRecordId === null ? "POST" : "PATCH",
+      body: JSON.stringify(buildRecordPayload(fields)),
+    });
+    recordDialog.close();
+    await loadResource(activeView);
+  } catch (error) {
+    recordError.textContent = error.message;
+    recordError.hidden = false;
+  } finally {
+    saveButton.disabled = false;
+  }
+});
+
+managementList.addEventListener("click", async (event) => {
+  const button = event.target.closest("button[data-action]");
+  if (!button) return;
+  const config = resources[activeView];
+  const record = config.records().find((item) => item.id === Number(button.dataset.id));
+  if (!record) return;
+
+  if (button.dataset.action === "edit") {
+    openRecordDialog(record);
+    return;
+  }
+  if (button.dataset.action === "delete") {
+    const label = activeView === "prestamos"
+      ? `¿Eliminar el préstamo de "${record.libro.titulo}" a ${record.socio.nombre}?`
+      : `¿Eliminar este ${config.singular}?`;
+    if (!window.confirm(label)) return;
+    try {
+      await apiRequest(`${config.endpoint}/${record.id}`, { method: "DELETE" });
+      await loadResource(activeView);
+    } catch (error) {
+      document.querySelector("#management-notice").textContent =
+        `No se pudo eliminar ${config.singular}: ${error.message}`;
+      document.querySelector("#management-notice").hidden = false;
+    }
+    return;
+  }
+  if (button.dataset.action === "return") {
+    if (!window.confirm(`¿Registrar la devolución de "${record.libro.titulo}"?`)) return;
+    try {
+      await apiRequest(`${config.endpoint}/${record.id}/devolucion`, {
+        method: "POST",
+        body: JSON.stringify({ fecha_devolucion: localDateString() }),
+      });
+      await loadResource(activeView);
+    } catch (error) {
+      document.querySelector("#management-notice").textContent =
+        `No se pudo registrar la devolución: ${error.message}`;
+      document.querySelector("#management-notice").hidden = false;
+    }
+  }
+});
+
+document.querySelector("#add-record").hidden = pagesApiNotConfigured;
+document.querySelector("#refresh-records").hidden = pagesApiNotConfigured;
 loadBooks();

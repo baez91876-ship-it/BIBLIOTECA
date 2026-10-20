@@ -277,6 +277,9 @@ class BibliotecaApiTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertIn('href="static/styles.css', response.text)
         self.assertIn('src="api-config.js', response.text)
+        for view in ("libros", "autores", "categorias", "socios", "prestamos"):
+            self.assertIn(f'data-view="{view}"', response.text)
+        self.assertIn('id="record-fields" class="record-dialog-fields"', response.text)
         self.assertEqual(self.client.get("/api-config.js").status_code, 200)
         catalog = self.client.get("/catalogo.json")
         self.assertEqual(catalog.status_code, 200)
@@ -322,6 +325,77 @@ class BibliotecaApiTests(unittest.TestCase):
         ).json()
         self.assertEqual(self.client.delete(f"/categorias/{first['id']}").status_code, 204)
         self.assertEqual(self.client.get(f"/libros/{book['id']}").json()["categorias"], [])
+
+    def test_prestamos_abiertos_se_pueden_editar_y_eliminar(self):
+        author = self.client.post(
+            "/autores", json={"nombre": "Autora de préstamos"}
+        ).json()
+        category = self.client.post(
+            "/categorias", json={"nombre": "Aventura"}
+        ).json()
+        book = self.client.post(
+            "/libros",
+            json={
+                "titulo": "Libro prestado",
+                "isbn": "1234567890123",
+                "anio_publicacion": 2020,
+                "ejemplares": 2,
+                "autor_id": author["id"],
+                "categoria_ids": [category["id"]],
+            },
+        ).json()
+        members = [
+            self.client.post(
+                "/socios", json={"nombre": name, "email": email}
+            ).json()
+            for name, email in (
+                ("Socio Uno", "socio1@example.com"),
+                ("Socio Dos", "socio2@example.com"),
+            )
+        ]
+        loans = [
+            self.client.post(
+                "/prestamos",
+                json={"libro_id": book["id"], "socio_id": member["id"]},
+            ).json()
+            for member in members
+        ]
+
+        new_due_date = date.today() + timedelta(days=21)
+        updated = self.client.patch(
+            f"/prestamos/{loans[0]['id']}",
+            json={"fecha_limite": new_due_date.isoformat()},
+        )
+        self.assertEqual(updated.status_code, 200)
+        self.assertEqual(updated.json()["fecha_limite"], new_due_date.isoformat())
+        self.assertEqual(
+            self.client.patch(
+                f"/prestamos/{loans[0]['id']}",
+                json={"fecha_limite": (date.today() - timedelta(days=1)).isoformat()},
+            ).status_code,
+            422,
+        )
+        self.assertEqual(
+            self.client.delete(f"/prestamos/{loans[1]['id']}").status_code, 204
+        )
+
+        self.assertEqual(
+            self.client.post(
+                f"/prestamos/{loans[0]['id']}/devolucion",
+                json={"fecha_devolucion": date.today().isoformat()},
+            ).status_code,
+            200,
+        )
+        self.assertEqual(
+            self.client.patch(
+                f"/prestamos/{loans[0]['id']}",
+                json={"fecha_limite": new_due_date.isoformat()},
+            ).status_code,
+            409,
+        )
+        self.assertEqual(
+            self.client.delete(f"/prestamos/{loans[0]['id']}").status_code, 409
+        )
 
 
 if __name__ == "__main__":

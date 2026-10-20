@@ -32,6 +32,8 @@ $package = if (Test-Path app) { "app" } else { "APP" }
 
 La interfaz está en <http://127.0.0.1:8000/>, Swagger en
 <http://127.0.0.1:8000/docs> y ReDoc en <http://127.0.0.1:8000/redoc>.
+La interfaz local permite administrar libros, autores, categorías, socios y
+préstamos; los préstamos devueltos conservan su historial.
 
 ## Preparar GitHub Pages
 
@@ -122,7 +124,7 @@ indique `limite` en un reporte.
 | Categorías | `GET/POST /categorias`, `GET/PATCH/DELETE /categorias/{id}` |
 | Libros | `GET/POST /libros`, `GET/PATCH/DELETE /libros/{id}` |
 | Socios | `GET/POST /socios`, `GET/PATCH/DELETE /socios/{id}`, `GET /socios/{id}/prestamos` |
-| Préstamos | `GET/POST /prestamos`, `GET /prestamos/{id}`, `POST /prestamos/{id}/devolucion` |
+| Préstamos | `GET/POST /prestamos`, `GET/PATCH/DELETE /prestamos/{id}`, `POST /prestamos/{id}/devolucion` |
 | Reportes | `GET /reportes/libros-mas-prestados`, `/categorias`, `/prestamos-vencidos`, `/socios-con-multas`, `/autores`, `/resumen` |
 
 `GET /libros` acepta filtros combinables: `buscar`, `autor`, `categoria_id`,
@@ -141,5 +143,7 @@ menos préstamos sin devolver.
 - Un socio con préstamos devueltos se desactiva al eliminarse; uno con préstamos
   sin devolver no se puede eliminar. No se permite borrar autores con libros ni
   libros con préstamos asociados.
+- Los préstamos abiertos permiten cambiar la fecha límite o eliminarlos. Los
+  préstamos devueltos son inmutables para conservar el historial.
 - Los controladores lanzan excepciones propias; un manejador global devuelve
   errores de aplicación como `{ "detail": "mensaje" }`.

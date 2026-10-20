@@ -5,6 +5,7 @@ from .prestamo import (
     DevolucionCreate,
     EstadoPrestamo,
     PrestamoCreate,
+    PrestamoPatch,
     PrestamoRead,
 )
 from .reporte import (
@@ -31,6 +32,7 @@ __all__ = [
     "SocioPatch",
     "SocioRead",
     "PrestamoCreate",
+    "PrestamoPatch",
     "PrestamoRead",
     "DevolucionCreate",
     "EstadoPrestamo",

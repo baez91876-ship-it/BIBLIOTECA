@@ -8,7 +8,12 @@ from sqlalchemy.orm import Session, joinedload
 from ..core.dependencies import Pagination
 from ..core.exceptions import Conflicto, NoEncontrado, ReglaNegocio
 from ..models import Libro, Prestamo, Socio
-from ..schemas.prestamo import DevolucionCreate, EstadoPrestamo, PrestamoCreate
+from ..schemas.prestamo import (
+    DevolucionCreate,
+    EstadoPrestamo,
+    PrestamoCreate,
+    PrestamoPatch,
+)
 
 
 def _loan_options():
@@ -139,6 +144,33 @@ def return_loan(
     loan.multa = Decimal(late_days) * Decimal("0.50")
     _commit(db)
     return get_loan(loan.id, db)
+
+
+def patch_loan(loan_id: int, data: PrestamoPatch, db: Session) -> Prestamo:
+    loan = db.scalar(
+        select(Prestamo).where(Prestamo.id == loan_id).with_for_update()
+    )
+    if loan is None:
+        raise NoEncontrado("Préstamo no encontrado")
+    if loan.fecha_devolucion is not None:
+        raise Conflicto("No se puede editar un préstamo devuelto")
+    if data.fecha_limite < loan.fecha_prestamo:
+        raise ReglaNegocio("La fecha límite no puede ser anterior al préstamo")
+    loan.fecha_limite = data.fecha_limite
+    _commit(db)
+    return get_loan(loan.id, db)
+
+
+def delete_loan(loan_id: int, db: Session) -> None:
+    loan = db.scalar(
+        select(Prestamo).where(Prestamo.id == loan_id).with_for_update()
+    )
+    if loan is None:
+        raise NoEncontrado("Préstamo no encontrado")
+    if loan.fecha_devolucion is not None:
+        raise Conflicto("No se puede eliminar un préstamo devuelto")
+    db.delete(loan)
+    db.commit()
 
 
 def _commit(db: Session) -> None:
