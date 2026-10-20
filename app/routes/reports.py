@@ -1,0 +1,57 @@
+from typing import Annotated
+
+from fastapi import APIRouter, Query
+
+from ..controllers import reports
+from ..core.dependencies import PaginationDep, SessionDep
+from ..schemas.reporte import (
+    AutorReporte,
+    CategoriaReporte,
+    LibroMasPrestado,
+    PrestamoVencido,
+    ResumenReporte,
+    SocioMultas,
+)
+
+router = APIRouter(prefix="/reportes", tags=["reportes"])
+LimiteReporte = Annotated[int, Query(ge=1, le=100)]
+
+
+@router.get("/libros-mas-prestados", response_model=list[LibroMasPrestado])
+def libros_mas_prestados(
+    db: SessionDep,
+    limite: LimiteReporte = 5,
+    skip: Annotated[int, Query(ge=0)] = 0,
+) -> list[dict]:
+    return reports.most_borrowed_books(db, skip, limite)
+
+
+@router.get("/categorias", response_model=list[CategoriaReporte])
+def reporte_categorias(
+    db: SessionDep, pagination: PaginationDep
+) -> list[dict]:
+    return reports.books_by_category(db, pagination)
+
+
+@router.get("/prestamos-vencidos", response_model=list[PrestamoVencido])
+def reporte_prestamos_vencidos(
+    db: SessionDep, pagination: PaginationDep
+) -> list[dict]:
+    return reports.overdue_loans(db, pagination)
+
+
+@router.get("/socios-con-multas", response_model=list[SocioMultas])
+def reporte_socios_con_multas(
+    db: SessionDep, pagination: PaginationDep
+) -> list[dict]:
+    return reports.members_with_fines(db, pagination)
+
+
+@router.get("/autores", response_model=list[AutorReporte])
+def reporte_autores(db: SessionDep, pagination: PaginationDep) -> list[dict]:
+    return reports.authors_summary(db, pagination)
+
+
+@router.get("/resumen", response_model=ResumenReporte)
+def reporte_resumen(db: SessionDep) -> dict:
+    return reports.library_summary(db)

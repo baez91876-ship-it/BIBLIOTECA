@@ -1,0 +1,28 @@
+from sqlalchemy import Column, ForeignKey, Integer, String, Table
+from sqlalchemy.orm import Mapped, mapped_column, relationship
+
+from ..core.database import Base
+
+
+libro_categoria = Table(
+    "libro_categoria",
+    Base.metadata,
+    Column("libro_id", ForeignKey("libros.id", ondelete="CASCADE"), primary_key=True),
+    Column(
+        "categoria_id",
+        ForeignKey("categorias.id", ondelete="CASCADE"),
+        primary_key=True,
+    ),
+)
+
+
+class Categoria(Base):
+    __tablename__ = "categorias"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    nombre: Mapped[str] = mapped_column(String(50), nullable=False, unique=True)
+    descripcion: Mapped[str | None] = mapped_column(String(200))
+
+    libros: Mapped[list["Libro"]] = relationship(
+        secondary=libro_categoria, back_populates="categorias"
+    )

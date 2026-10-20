@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f7f5f0">
+  <title>Biblioteca | Gestión de libros</title>
+  <link rel="stylesheet" href="/static/styles.css">
+  <script src="/static/app.js" defer></script>
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <a class="brand" href="/" aria-label="Inicio Biblioteca">
+        <span class="brand-icon" aria-hidden="true">B</span>
+        <span>hojas<span class="brand-period">.</span></span>
+      </a>
+      <div class="sidebar-label">BIBLIOTECA</div>
+      <a class="nav-link active" href="/" aria-current="page">
+        <span aria-hidden="true">▤</span> Colección
+      </a>
+      <div class="sidebar-note">
+        <span class="note-mark" aria-hidden="true">✳</span>
+        <p>Un buen libro siempre merece otra vuelta.</p>
+      </div>
+      <div class="sidebar-footer"><span class="status-dot"></span> Biblioteca conectada</div>
+    </aside>
+
+    <main class="main-content">
+      <header class="topbar">
+        <span class="breadcrumb">Biblioteca <span>/</span> Colección</span>
+        <span class="database-badge"><span class="status-dot"></span> PostgreSQL · LIBRERIA</span>
+      </header>
+
+      <section class="page-heading">
+        <div>
+          <p class="eyebrow">TU ESPACIO DE LECTURA</p>
+          <h1>La colección<span class="heading-period">.</span></h1>
+          <p class="subtitle">Todos tus libros, reunidos en un solo lugar.</p>
+        </div>
+        <button class="button button-primary" id="add-book" type="button">
+          <span aria-hidden="true">＋</span> Añadir libro
+        </button>
+      </section>
+
+      <section class="stats-grid" aria-label="Resumen de la colección">
+        <article class="stat-card">
+          <span class="stat-label">LIBROS EN COLECCIÓN</span>
+          <div class="stat-value" id="total-count">—</div>
+          <span class="stat-detail">Títulos registrados</span>
+          <span class="stat-icon book-icon" aria-hidden="true">▤</span>
+        </article>
+        <article class="stat-card">
+          <span class="stat-label">EJEMPLARES</span>
+          <div class="stat-value" id="copy-count">—</div>
+          <span class="stat-detail">En la colección</span>
+          <span class="stat-icon available-icon" aria-hidden="true">✓</span>
+        </article>
+        <article class="stat-card">
+          <span class="stat-label">CATEGORÍAS</span>
+          <div class="stat-value" id="category-count">—</div>
+          <span class="stat-detail">En esta colección</span>
+          <span class="stat-icon loaned-icon" aria-hidden="true">↗</span>
+        </article>
+      </section>
+
+      <section class="collection-panel">
+        <div class="collection-header">
+          <div>
+            <h2>Todos los libros</h2>
+            <p>Explora y administra tu biblioteca personal.</p>
+          </div>
+          <label class="search-box">
+            <span aria-hidden="true">⌕</span>
+            <input id="search" type="search" placeholder="Buscar título o autor..." autocomplete="off">
+          </label>
+        </div>
+        <div id="notice" class="notice" role="status" aria-live="polite" hidden></div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th scope="col">LIBRO</th>
+                <th scope="col">AUTOR</th>
+                <th scope="col">AÑO</th>
+                <th scope="col">ISBN</th>
+                <th scope="col">EJEMPLARES</th>
+                <th scope="col">CATEGORÍAS</th>
+                <th scope="col"><span class="visually-hidden">Acciones</span></th>
+              </tr>
+            </thead>
+            <tbody id="book-list"></tbody>
+          </table>
+          <div class="empty-state" id="empty-state" hidden>
+            <span class="empty-icon" aria-hidden="true">▤</span>
+            <h3 id="empty-title">Tu próxima lectura empieza aquí</h3>
+            <p id="empty-description">Añade un libro para comenzar tu colección.</p>
+            <button class="button button-secondary" id="empty-add-book" type="button">Añadir primer libro</button>
+          </div>
+        </div>
+        <footer class="table-footer">
+          <span id="result-count">0 libros</span>
+          <button class="text-button" id="refresh-books" type="button">↻ Actualizar lista</button>
+        </footer>
+      </section>
+
+      <footer class="page-footer">Hecho para quienes siempre tienen un libro cerca. <span>✳</span></footer>
+    </main>
+  </div>
+
+  <dialog class="book-dialog" id="book-dialog" aria-labelledby="dialog-title">
+    <form id="book-form">
+      <div class="dialog-heading">
+        <div>
+          <p class="eyebrow">TU BIBLIOTECA</p>
+          <h2 id="dialog-title">Añadir libro</h2>
+        </div>
+        <button class="icon-button" id="close-dialog" type="button" aria-label="Cerrar">×</button>
+      </div>
+      <label for="title">Título</label>
+      <input id="title" name="titulo" required maxlength="150" autocomplete="off">
+      <label for="isbn">ISBN</label>
+      <input id="isbn" name="isbn" required maxlength="20" autocomplete="off">
+      <label for="author">Autor</label>
+      <select id="author" name="autor_id" required></select>
+      <label for="year">Año de publicación</label>
+      <input id="year" name="anio_publicacion" type="number" required min="0" max="9999">
+      <label for="copies">Ejemplares</label>
+      <input id="copies" name="ejemplares" type="number" required min="0" value="1">
+      <label for="categories">Categorías</label>
+      <select id="categories" name="categorias_ids" multiple size="4"></select>
+      <p class="form-error" id="form-error" role="alert" hidden></p>
+      <div class="dialog-actions">
+        <button class="button button-secondary" id="cancel-dialog" type="button">Cancelar</button>
+        <button class="button button-primary" id="save-book" type="submit">Guardar libro</button>
+      </div>
+    </form>
+  </dialog>
+</body>
+</html>
