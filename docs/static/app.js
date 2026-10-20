@@ -110,6 +110,9 @@ if (pagesApiNotConfigured) {
   for (const link of document.querySelectorAll(".nav-link[data-view]:not([data-view='libros'])")) {
     link.hidden = true;
   }
+  document.querySelector("#api-docs").hidden = true;
+} else {
+  document.querySelector("#api-docs-frame").src = `${apiBaseUrl}/docs`;
 }
 
 function showNotice(message) {

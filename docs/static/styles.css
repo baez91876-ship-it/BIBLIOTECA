@@ -119,6 +119,16 @@ th:last-child, td:last-child { width: 100px; text-align: right; }
 .text-button { border: 0; background: none; color: var(--green); font-size: 10px; font-weight: 600; }
 .text-button:hover { color: var(--green-dark); }
 .management-actions { width: 130px !important; }
+.api-docs-panel { margin-top: 18px; overflow: hidden; border: 1px solid #eeece6; border-radius: 9px; background: #fff; }
+.api-docs-panel > summary { display: flex; min-height: 68px; align-items: center; justify-content: space-between; gap: 15px; padding: 14px 20px; cursor: pointer; list-style: none; }
+.api-docs-panel > summary::-webkit-details-marker { display: none; }
+.api-docs-panel > summary strong, .api-docs-panel > summary small { display: block; }
+.api-docs-panel > summary strong { color: var(--ink); font-size: 12px; }
+.api-docs-panel > summary small { margin-top: 5px; color: #92978f; font-size: 10px; }
+.api-docs-chevron { color: var(--green); font-size: 20px; transition: transform .15s; }
+.api-docs-panel[open] .api-docs-chevron { transform: rotate(180deg); }
+.api-docs-content { border-top: 1px solid var(--line); }
+.api-docs-content iframe { display: block; width: 100%; height: min(82vh, 900px); min-height: 600px; border: 0; }
 .management-actions button { font-size: 13px; }
 .record-dialog-fields > label { display: block; margin: 14px 0 6px; color: #5e695f; font-size: 11px; font-weight: 600; }
 .record-dialog-fields input, .record-dialog-fields select { width: 100%; min-height: 39px; padding: 0 10px; border: 1px solid #e5e7e0; border-radius: 6px; outline: 0; color: var(--ink); font-size: 12px; }

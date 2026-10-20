@@ -16,6 +16,7 @@ from .routes import authors, books, categories, loans, members, reports
 
 logger = logging.getLogger("uvicorn.error")
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
+FRONTEND_ROOT = PROJECT_ROOT / "docs"
 
 
 @asynccontextmanager
@@ -102,7 +103,7 @@ if cors_origins:
         allow_headers=["Content-Type"],
     )
 app.mount(
-    "/static", StaticFiles(directory=PROJECT_ROOT / "static"), name="static"
+    "/static", StaticFiles(directory=FRONTEND_ROOT / "static"), name="static"
 )
 app.include_router(books.router)
 app.include_router(authors.router)
@@ -114,13 +115,13 @@ app.include_router(reports.router)
 
 @app.get("/", include_in_schema=False)
 def interfaz():
-    return FileResponse(PROJECT_ROOT / "index.html")
+    return FileResponse(FRONTEND_ROOT / "index.html")
 
 
 @app.get("/api-config.js", include_in_schema=False)
 def configuracion_api():
     return FileResponse(
-        PROJECT_ROOT / "api-config.js",
+        FRONTEND_ROOT / "api-config.js",
         media_type="application/javascript",
     )
 
@@ -128,7 +129,7 @@ def configuracion_api():
 @app.get("/catalogo.json", include_in_schema=False)
 def catalogo_estatico():
     return FileResponse(
-        PROJECT_ROOT / "catalogo.json",
+        FRONTEND_ROOT / "catalogo.json",
         media_type="application/json",
     )
 

@@ -277,6 +277,10 @@ class BibliotecaApiTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertIn('href="static/styles.css', response.text)
         self.assertIn('src="api-config.js', response.text)
+        self.assertIn('id="api-docs-frame"', response.text)
+        self.assertEqual(self.client.get("/docs").status_code, 200)
+        documented_paths = self.client.get("/openapi.json").json()["paths"]
+        self.assertIn("/reportes/resumen", documented_paths)
         for view in ("libros", "autores", "categorias", "socios", "prestamos"):
             self.assertIn(f'data-view="{view}"', response.text)
         self.assertIn('id="record-fields" class="record-dialog-fields"', response.text)
@@ -286,6 +290,7 @@ class BibliotecaApiTests(unittest.TestCase):
         self.assertEqual(len(catalog.json()["autores"]), 40)
         self.assertEqual(len(catalog.json()["libros"]), 41)
         self.assertEqual(self.client.get("/static/app.js").status_code, 200)
+        self.assertEqual(self.client.get("/static/styles.css").status_code, 200)
 
     def test_patch_rechaza_nulos_en_campos_requeridos(self):
         self.assertEqual(

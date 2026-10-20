@@ -37,8 +37,8 @@ préstamos; los préstamos devueltos conservan su historial.
 
 ## Preparar GitHub Pages
 
-La interfaz estática tiene su `index.html` en la raíz del repositorio y puede
-publicarse desde `main` / `(root)` en **Settings → Pages → Build and deployment
+La interfaz estática está organizada en `docs/` y puede publicarse desde
+`main` / `/docs` en **Settings → Pages → Build and deployment
 → Deploy from a branch**. La API FastAPI y PostgreSQL no se ejecutan en Pages:
 primero hay que desplegar la API y su base de datos en un servicio que admita
 Python y PostgreSQL.
@@ -109,11 +109,20 @@ app/
 ├── routes/       # Endpoints FastAPI
 ├── schemas/      # Validación y respuestas Pydantic
 └── main.py       # Aplicación, routers y manejador de errores
+docs/             # GitHub Pages: interfaz y catálogo estático
+├── static/       # JavaScript y estilos del sitio
+├── index.html
+├── api-config.js
+└── catalogo.json
 docker/           # Dockerfile, Compose y ejemplos de entorno
-static/           # Interfaz web
+test_main.py      # Pruebas de API e interfaz
 ```
 
 ## Recursos y endpoints
+
+En la interfaz local, expande **Documentación interactiva de la API** bajo la
+colección para abrir Swagger completo sin salir de la página. También puedes
+visitar <http://127.0.0.1:8001/docs> en Docker.
 
 Todos los listados usan `skip` (mínimo 0) y `limit` (1–100), salvo que se
 indique `limite` en un reporte.

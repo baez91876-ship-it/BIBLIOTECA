@@ -5,9 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#f7f5f0">
   <title>Biblioteca | Gestión de libros</title>
-  <link rel="stylesheet" href="static/styles.css?v=crud-local">
-  <script src="api-config.js?v=crud-local" defer></script>
-  <script src="static/app.js?v=crud-local" defer></script>
+  <link rel="stylesheet" href="static/styles.css?v=docs-swagger">
+  <script src="api-config.js?v=docs-swagger" defer></script>
+  <script src="static/app.js?v=docs-swagger" defer></script>
 </head>
 <body>
   <div class="app-shell">
@@ -123,6 +123,23 @@
           <button class="text-button" id="refresh-books" type="button">↻ Actualizar lista</button>
         </footer>
       </section>
+      <details class="api-docs-panel" id="api-docs">
+        <summary>
+          <span>
+            <strong>Documentación interactiva de la API</strong>
+            <small>Consulta y prueba todos los endpoints disponibles en Swagger.</small>
+          </span>
+          <span class="api-docs-chevron" aria-hidden="true">⌄</span>
+        </summary>
+        <div class="api-docs-content">
+          <iframe
+            id="api-docs-frame"
+            title="Documentación interactiva de la API"
+            loading="lazy"
+            referrerpolicy="no-referrer"
+          ></iframe>
+        </div>
+      </details>
       </div>
 
       <section id="management-view" hidden>
