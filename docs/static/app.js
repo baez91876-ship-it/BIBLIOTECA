@@ -42,7 +42,7 @@ async function fetchApi(url, options) {
   } catch (error) {
     if (error instanceof TypeError) {
       throw new Error(
-        "No se pudo conectar con la API de biblioteca. Comprueba que el servicio de Render esté activo, que la URL configurada sea correcta y que CORS permita GitHub Pages.",
+        "No se pudo conectar con la API de biblioteca. Comprueba que el despliegue de Vercel esté activo, que la URL configurada sea correcta y que CORS permita GitHub Pages.",
         { cause: error },
       );
     }
@@ -162,7 +162,7 @@ async function loadApiDocs() {
       ? ` (${error.message.slice(6)})`
       : "";
     apiDocsStatus.textContent =
-      `Swagger no está disponible${reason}. La API publicada no responde; consulta la disponibilidad del servicio en Render.`;
+      `Swagger no está disponible${reason}. La API publicada no responde; comprueba el despliegue de Vercel.`;
   }
 }
 

@@ -74,7 +74,7 @@ class BibliotecaApiTests(unittest.TestCase):
         self.engine.dispose()
 
     def test_connection_string_render_usa_el_controlador_psycopg(self):
-        """Adapta la connection string de Render a la dependencia psycopg 3."""
+        """Adapta una URL PostgreSQL a la dependencia psycopg 3."""
         url = database._parse_database_url(
             "postgresql://user:password@localhost:5432/libreria"
         )
@@ -603,12 +603,12 @@ class BibliotecaApiTests(unittest.TestCase):
             self.client.get("/api-config.js").text,
             "window.BIBLIOTECA_API_URL = '';",
         )
-        self.assertIn(
-            "https://biblioteca-api-baez91876-ship-it.onrender.com",
-            (app_module.FRONTEND_ROOT / "api-config.js").read_text(
-                encoding="utf-8"
-            ),
+        api_config = (app_module.FRONTEND_ROOT / "api-config.js").read_text(
+            encoding="utf-8"
         )
+        self.assertIn('window.BIBLIOTECA_API_URL = "";', api_config)
+        self.assertIn("Vercel", api_config)
+        self.assertNotIn("onrender.com", api_config)
         catalog = self.client.get("/catalogo.json")
         self.assertEqual(catalog.status_code, 200)
         catalog_data = catalog.json()

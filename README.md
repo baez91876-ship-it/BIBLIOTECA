@@ -66,57 +66,52 @@ La página publicada está en
 <https://baez91876-ship-it.github.io/BIBLIOTECA/>. El repositorio se llama
 `BIBLIOTECA`; la URL anterior con `BIBBLIOTECA` ya no es válida.
 
-Si la API no responde, la interfaz muestra el catálogo guardado en modo de solo
-lectura. Para recuperar el inicio de sesión y la gestión de datos, la API de
-Render debe estar disponible.
+Si la API no responde o todavía no se configura su URL, la interfaz muestra el
+catálogo guardado en modo de solo lectura.
 
-La URL de la API y el origen CORS se configuran para Render en
-[`docs/api-config.js`](./docs/api-config.js) y [`render.yaml`](./render.yaml).
-Pages no conserva credenciales; para operaciones de administración inicia sesión
-en la interfaz desplegada.
+La URL de la API para GitHub Pages se configura en
+[`docs/api-config.js`](./docs/api-config.js). Pages no conserva credenciales;
+para operaciones de administración inicia sesión en la interfaz desplegada.
 
-## Desplegar API y habilitar altas en GitHub Pages
+## Desplegar FastAPI en Vercel
 
-GitHub Pages solo publica la interfaz. El archivo `render.yaml` prepara la API
-FastAPI y una base PostgreSQL gratuita en Render. El despliegue aplica Alembic
-antes de arrancar la API y genera una clave JWT de producción. Para desplegarlos, abre el
-Dashboard de Render, selecciona **New → Blueprint**, conecta este repositorio y
-confirma la creación de los recursos definidos por el Blueprint.
+El proyecto configura el punto de entrada de FastAPI en [`pyproject.toml`](./pyproject.toml)
+y la versión de Python en [`.python-version`](./.python-version). Importa este
+repositorio en Vercel desde **Add New → Project**; deja **Root Directory** en la
+raíz del repositorio y usa la detección automática de FastAPI. Vercel sirve la
+API en rutas como `/api/v1/health` y `/docs`.
 
-El servicio queda configurado para aceptar solicitudes del origen de GitHub
-Pages y la interfaz apunta a
-`https://biblioteca-api-baez91876-ship-it.onrender.com`. Si Render asigna otra
-URL al servicio, actualiza `window.BIBLIOTECA_API_URL` en `docs/api-config.js`
-con la URL que aparece en el Dashboard y sube ese cambio. GitHub Pages volverá a
-publicar la interfaz automáticamente desde `main` / `/docs`.
+Antes del despliegue, configura estas variables en **Settings → Environment
+Variables** para Production (y también Preview, si usarás previews):
 
-Si los logs de Render muestran `ValidationError` para `Settings` y el campo
-`database_url` como obligatorio, Render no entregó la variable requerida y la
-API no puede iniciar sin una base de datos configurada. Crea o sincroniza los
-recursos desde **New → Blueprint** usando este repositorio y la rama que
-contiene `render.yaml`; el Blueprint conecta `DATABASE_URL` con la cadena de
-conexión de `biblioteca-postgres`. Si el servicio web se creó manualmente,
-abre **Environment**, agrega exactamente la variable `DATABASE_URL` con la URL
-interna de PostgreSQL y confirma que la base se llame `libreria`. El archivo
-`render.yaml` no agrega variables a un servicio independiente hasta que sus
-recursos se administren con el Blueprint. No guardes la URL ni sus credenciales
-en Git. Guarda los cambios, vuelve a desplegar y verifica
-`/api/v1/health`.
-Si esa ruta responde `404 Not Found` desde Render, el servicio no está
-desplegado en esa dirección: sincroniza el Blueprint y confirma que la URL
-pública asignada en Render coincida con `docs/api-config.js`. Si la interfaz
-indica que no puede conectarse, el inicio de sesión no estará disponible hasta
-que la API responda y permita el origen de GitHub Pages.
+- `DATABASE_URL`: URL de una base PostgreSQL externa (por ejemplo, Neon o
+  Supabase). La base debe llamarse exactamente `libreria`; Vercel no proporciona
+  una base PostgreSQL integrada.
+- `JWT_SECRET_KEY`: secreto aleatorio de al menos 32 caracteres.
+- `APP_ENV`: `production`.
+- `CORS_ALLOWED_ORIGINS`: `https://baez91876-ship-it.github.io`.
 
-Después del primer despliegue, crea el primer administrador desde la consola
-del servicio con `python -m app.scripts.crear_admin`. El comando solicita correo,
-nombre y contraseña sin mostrarla en pantalla; no existe una contraseña inicial
-ni una ruta pública para asignar roles privilegiados.
+No subas la URL de la base ni secretos a Git. Antes del primer uso, aplica las
+migraciones con la misma base configurada para producción. Copia
+`DATABASE_URL` desde Vercel a tu `.env` local ignorado por Git (haz una copia
+del `.env` existente antes de reemplazarlo) y ejecuta:
 
-El plan gratuito puede tardar alrededor de un minuto en despertar tras estar
-inactivo, y su base PostgreSQL caduca a los 30 días. No uses ese plan para datos
-que necesites conservar; antes de la caducidad, actualiza a una base de pago y
-verifica la migración de los datos.
+```powershell
+npx vercel link
+.venv\Scripts\python.exe -m app.scripts.migrate
+.venv\Scripts\python.exe -m app.scripts.crear_admin
+```
+
+El comando de alta solicita correo, nombre y contraseña sin mostrarla. No existe
+una contraseña inicial ni una ruta pública para asignar roles privilegiados.
+Después del despliegue, comprueba `/api/v1/health` y `/docs` en el dominio que
+Vercel asignó al proyecto.
+
+Para habilitar el inicio de sesión desde GitHub Pages, actualiza
+`window.BIBLIOTECA_API_URL` en [`docs/api-config.js`](./docs/api-config.js) con
+ese dominio HTTPS de Vercel y sube el cambio. GitHub Pages volverá a publicar la
+interfaz. Si el dominio de Vercel cambia, actualiza también
+`CORS_ALLOWED_ORIGINS` en Vercel y despliega de nuevo.
 
 ## Pruebas
 
@@ -152,6 +147,9 @@ cobertura comprobada supera el 70%.
 ├── scripts/
 │   └── dev.js        # Lanzador npm para Uvicorn
 ├── .env.example      # Plantilla de configuración local
+├── .python-version   # Python 3.13 en Vercel
+├── pyproject.toml    # Punto de entrada FastAPI para Vercel
+├── vercel.json        # Incluye los recursos de la interfaz en la función
 ├── package.json      # Comandos npm (sin dependencias Node)
 ├── requirements.txt  # Dependencias de ejecución Python
 ├── requirements-dev.txt
