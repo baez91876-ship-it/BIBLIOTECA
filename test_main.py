@@ -557,6 +557,11 @@ class BibliotecaApiTests(unittest.TestCase):
         )
         app_script = self.client.get("/static/app.js")
         self.assertEqual(app_script.status_code, 200)
+        self.assertIn("async function fetchApi(url, options)", app_script.text)
+        self.assertIn(
+            "No se pudo conectar con la API de biblioteca.",
+            app_script.text,
+        )
         referenced_ids = set(
             re.findall(
                 r"""querySelector(?:All)?\(["']#([\w-]+)""",

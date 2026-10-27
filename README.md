@@ -102,6 +102,11 @@ interna de PostgreSQL y confirma que la base se llame `libreria`. El archivo
 recursos se administren con el Blueprint. No guardes la URL ni sus credenciales
 en Git. Guarda los cambios, vuelve a desplegar y verifica
 `/api/v1/health`.
+Si esa ruta responde `404 Not Found` desde Render, el servicio no está
+desplegado en esa dirección: sincroniza el Blueprint y confirma que la URL
+pública asignada en Render coincida con `docs/api-config.js`. Si la interfaz
+indica que no puede conectarse, el inicio de sesión no estará disponible hasta
+que la API responda y permita el origen de GitHub Pages.
 
 Después del primer despliegue, crea el primer administrador desde la consola
 del servicio con `python -m app.scripts.crear_admin`. El comando solicita correo,

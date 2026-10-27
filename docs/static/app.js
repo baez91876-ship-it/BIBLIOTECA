@@ -36,6 +36,20 @@ const pagesApiNotConfigured =
   window.location.hostname.endsWith(".github.io") && !apiBaseUrl;
 let readOnlyCatalog = pagesApiNotConfigured;
 
+async function fetchApi(url, options) {
+  try {
+    return await fetch(url, options);
+  } catch (error) {
+    if (error instanceof TypeError) {
+      throw new Error(
+        "No se pudo conectar con la API de biblioteca. Comprueba que el servicio de Render esté activo, que la URL configurada sea correcta y que CORS permita GitHub Pages.",
+        { cause: error },
+      );
+    }
+    throw error;
+  }
+}
+
 // Metadatos de tablas y formularios para las pantallas de administración.
 const resources = {
   autores: {
@@ -134,7 +148,7 @@ async function loadApiDocs() {
   }
 
   try {
-    const response = await fetch(`${apiBaseUrl}/openapi.json`, {
+    const response = await fetchApi(`${apiBaseUrl}/openapi.json`, {
       signal: AbortSignal.timeout(10000),
     });
     if (!response.ok) {
@@ -193,7 +207,7 @@ async function renewSession() {
   if (!refreshToken) return false;
   if (!refreshInProgress) {
     refreshInProgress = (async () => {
-      const response = await fetch(`${apiBaseUrl}/api/v1/auth/refresh`, {
+      const response = await fetchApi(`${apiBaseUrl}/api/v1/auth/refresh`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ refresh_token: refreshToken }),
@@ -235,7 +249,7 @@ async function apiRequest(path, options = {}) {
     );
   }
   const { retrying = false, ...requestOptions } = options;
-  const response = await fetch(`${apiBaseUrl}/api/v1${path}`, {
+  const response = await fetchApi(`${apiBaseUrl}/api/v1${path}`, {
     ...requestOptions,
     headers: {
       ...(options.body ? { "Content-Type": "application/json" } : {}),
@@ -758,7 +772,7 @@ registerForm.addEventListener("submit", async (event) => {
   submitButton.disabled = true;
   try {
     const formData = new FormData(registerForm);
-    const response = await fetch(`${apiBaseUrl}/api/v1/auth/registro`, {
+    const response = await fetchApi(`${apiBaseUrl}/api/v1/auth/registro`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(Object.fromEntries(formData)),
@@ -788,7 +802,7 @@ registerForm.addEventListener("submit", async (event) => {
 document.querySelector("#logout-button").addEventListener("click", async () => {
   if (refreshToken) {
     try {
-      await fetch(`${apiBaseUrl}/api/v1/auth/logout`, {
+      await fetchApi(`${apiBaseUrl}/api/v1/auth/logout`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ refresh_token: refreshToken }),
@@ -810,7 +824,7 @@ loginForm.addEventListener("submit", async (event) => {
   loginError.hidden = true;
   try {
     const formData = new FormData(loginForm);
-    const response = await fetch(`${apiBaseUrl}/api/v1/auth/login`, {
+    const response = await fetchApi(`${apiBaseUrl}/api/v1/auth/login`, {
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
       body: new URLSearchParams(formData),
@@ -821,7 +835,7 @@ loginForm.addEventListener("submit", async (event) => {
     }
     accessToken = tokens.access_token;
     refreshToken = tokens.refresh_token;
-    const profileResponse = await fetch(`${apiBaseUrl}/api/v1/auth/me`, {
+    const profileResponse = await fetchApi(`${apiBaseUrl}/api/v1/auth/me`, {
       headers: { Authorization: `Bearer ${accessToken}` },
     });
     if (!profileResponse.ok) throw new Error("No se pudo validar la sesión.");
