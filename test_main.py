@@ -4,16 +4,15 @@ import re
 import unittest
 from datetime import date, timedelta
 from html.parser import HTMLParser
-from importlib import import_module, util
 
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine, event
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
-PACKAGE_NAME = "app" if util.find_spec("app") else "APP"
-database = import_module(f"{PACKAGE_NAME}.core.database")
-app_module = import_module(f"{PACKAGE_NAME}.main")
+import app.main as app_module
+from app.core import database
+
 Base = database.Base
 get_db = database.get_db
 app = app_module.app

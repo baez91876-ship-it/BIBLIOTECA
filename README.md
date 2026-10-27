@@ -6,7 +6,7 @@ Taller 1 en rutas legacy solo para desarrollo.
 
 ## Requisitos
 
-- Python 3.13 o superior
+- Python 3.13
 - Node.js y npm
 - PostgreSQL y una base de datos `libreria`
 
@@ -134,13 +134,15 @@ a desplegar.
 
 ```powershell
 .venv\Scripts\python.exe -m pip install -r requirements-dev.txt
-.venv\Scripts\python.exe -m pytest --cov=app --cov-report=term-missing
+.venv\Scripts\python.exe -m pytest --cov=app --cov-branch --cov-report=term-missing
 ```
 
-La suite incluye los 24 casos de aceptación del Taller 1, autenticación,
-bloqueo, rotación y reuso de refresh tokens, RBAC, propiedad, rate limiting,
-paginación y request ID. Usa SQLite en memoria para no modificar PostgreSQL; la
-cobertura comprobada supera el 70%.
+La suite incluye los 24 casos de aceptación del Taller 1, flujos CRUD V2,
+autenticación, bloqueo, rotación y reuso de refresh tokens, permisos, paginación,
+reportes, scripts de administración y manejo de errores. Usa SQLite en memoria
+para no modificar PostgreSQL. El informe muestra sentencias y ramas sin cubrir;
+las pruebas locales no sustituyen una validación de despliegue contra PostgreSQL
+ni una comprobación de la URL pública.
 
 ## Estructura
 

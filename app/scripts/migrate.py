@@ -1,15 +1,13 @@
 """Aplica las migraciones y registra con seguridad bases del Taller 1."""
 
-import importlib
-import importlib.util
 from pathlib import Path
 
-from alembic import command
 from alembic.config import Config
 from sqlalchemy import inspect
 
-package_name = "app" if importlib.util.find_spec("app") else "APP"
-database = importlib.import_module(f"{package_name}.core.database")
+from alembic import command
+
+from ..core import database
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 ALEMBIC_CONFIG = Config(str(PROJECT_ROOT / "alembic.ini"))
@@ -47,9 +45,7 @@ def stamp_legacy_schema() -> None:
                 f"Faltan tablas: {', '.join(sorted(missing_tables))}."
             )
         for table_name, required_columns in LEGACY_COLUMNS.items():
-            columns = {
-                column["name"] for column in inspector.get_columns(table_name)
-            }
+            columns = {column["name"] for column in inspector.get_columns(table_name)}
             missing_columns = required_columns - columns
             if missing_columns:
                 raise RuntimeError(

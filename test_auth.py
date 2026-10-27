@@ -1,8 +1,6 @@
 """Pruebas de seguridad para registro, sesiones y autorización de la API V2."""
 
-import importlib
-import importlib.util
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime, timedelta
 
 import pytest
 from fastapi.testclient import TestClient
@@ -10,13 +8,10 @@ from sqlalchemy import create_engine, event, func, select
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
-PACKAGE_NAME = "app" if importlib.util.find_spec("app") else "APP"
-database = importlib.import_module(f"{PACKAGE_NAME}.core.database")
-main = importlib.import_module(f"{PACKAGE_NAME}.main")
-security = importlib.import_module(f"{PACKAGE_NAME}.core.security")
-auth_controller = importlib.import_module(f"{PACKAGE_NAME}.controllers.auth")
-models = importlib.import_module(f"{PACKAGE_NAME}.models")
-auth_router = importlib.import_module(f"{PACKAGE_NAME}.routes.auth")
+import app.controllers.auth as auth_controller
+import app.routes.auth as auth_router
+from app import main, models
+from app.core import database, security
 
 
 @pytest.fixture
@@ -146,9 +141,12 @@ def test_refresh_rotado_revoca_la_familia_si_se_reutiliza(api):
     replacement = rotated.json()["refresh_token"]
     reuse = client.post("/api/v1/auth/refresh", json={"refresh_token": original})
     assert reuse.status_code == 401
-    assert client.post(
-        "/api/v1/auth/refresh", json={"refresh_token": replacement}
-    ).status_code == 401
+    assert (
+        client.post(
+            "/api/v1/auth/refresh", json={"refresh_token": replacement}
+        ).status_code
+        == 401
+    )
     with session_factory() as db:
         tokens = db.scalars(select(models.RefreshToken)).all()
         assert all(token.revocado_en is not None for token in tokens)
@@ -267,10 +265,7 @@ def test_request_id_se_incluye_incluso_en_respuestas_401(api):
 
 def test_rate_limit_limita_el_registro_a_cinco_por_minuto(api):
     client, _ = api
-    responses = [
-        register(client, f"reader{index}@example.com")
-        for index in range(6)
-    ]
+    responses = [register(client, f"reader{index}@example.com") for index in range(6)]
 
     assert [response.status_code for response in responses] == [
         201,
@@ -345,3 +340,225 @@ def test_reporte_paginado_v2_conserva_una_sola_consulta_sql(api):
     assert response.json()["total"] == 1
     assert response.json()["items"] == []
     assert len(report_queries) == 1
+
+
+def test_administrador_puede_completar_flujos_crud_versionados(api):
+    client, session_factory = api
+    with session_factory() as db:
+        db.add(
+            models.Usuario(
+                email="crud-admin@example.com",
+                nombre="Administrador CRUD",
+                password_hash=security.hash_password("BibliotecaSegura123"),
+                rol="administrador",
+            )
+        )
+        db.commit()
+    access = login(client, "crud-admin@example.com").json()["access_token"]
+    headers = {"Authorization": f"Bearer {access}"}
+
+    author = client.post(
+        "/api/v1/autores",
+        headers=headers,
+        json={"nombre": "Autora CRUD", "nacionalidad": "Mexicana"},
+    ).json()
+    assert client.get("/api/v1/autores", headers=headers).json()["total"] == 1
+    assert (
+        client.get(f"/api/v1/autores/{author['id']}", headers=headers).status_code
+        == 200
+    )
+    assert (
+        client.get(f"/api/v1/autores/{author['id']}/libros", headers=headers).json()[
+            "total"
+        ]
+        == 0
+    )
+    assert (
+        client.patch(
+            f"/api/v1/autores/{author['id']}",
+            headers=headers,
+            json={"nacionalidad": "Argentina"},
+        ).status_code
+        == 200
+    )
+
+    category = client.post(
+        "/api/v1/categorias", headers=headers, json={"nombre": "Categoría CRUD"}
+    ).json()
+    assert client.get("/api/v1/categorias", headers=headers).json()["total"] == 1
+    assert (
+        client.get(f"/api/v1/categorias/{category['id']}", headers=headers).status_code
+        == 200
+    )
+    assert (
+        client.patch(
+            f"/api/v1/categorias/{category['id']}",
+            headers=headers,
+            json={"descripcion": "Actualizada"},
+        ).status_code
+        == 200
+    )
+
+    book = client.post(
+        "/api/v1/libros",
+        headers=headers,
+        json={
+            "titulo": "libro crud",
+            "isbn": "9780000000001",
+            "anio_publicacion": 2020,
+            "ejemplares": 2,
+            "autor_id": author["id"],
+            "categoria_ids": [category["id"]],
+        },
+    ).json()
+    assert client.get("/api/v1/libros", headers=headers).json()["total"] == 1
+    assert (
+        client.get(f"/api/v1/libros/{book['id']}", headers=headers).status_code == 200
+    )
+    assert (
+        client.patch(
+            f"/api/v1/libros/{book['id']}",
+            headers=headers,
+            json={"titulo": "libro actualizado"},
+        ).json()["titulo"]
+        == "Libro Actualizado"
+    )
+
+    member = client.post(
+        "/api/v1/socios",
+        headers=headers,
+        json={"nombre": "Socia CRUD", "email": "socia-crud@example.com"},
+    ).json()
+    assert client.get("/api/v1/socios", headers=headers).json()["total"] == 1
+    assert (
+        client.get(f"/api/v1/socios/{member['id']}", headers=headers).status_code == 200
+    )
+    assert (
+        client.patch(
+            f"/api/v1/socios/{member['id']}",
+            headers=headers,
+            json={"telefono": "+1 555 555"},
+        ).status_code
+        == 200
+    )
+
+    loan = client.post(
+        "/api/v1/prestamos",
+        headers=headers,
+        json={
+            "libro_id": book["id"],
+            "socio_id": member["id"],
+            "fecha_prestamo": (date.today() - timedelta(days=7)).isoformat(),
+        },
+    ).json()
+    assert client.get("/api/v1/prestamos", headers=headers).json()["total"] == 1
+    assert (
+        client.get(f"/api/v1/prestamos/{loan['id']}", headers=headers).status_code
+        == 200
+    )
+    assert (
+        client.get(f"/api/v1/socios/{member['id']}/prestamos", headers=headers).json()[
+            "total"
+        ]
+        == 1
+    )
+    assert (
+        client.patch(
+            f"/api/v1/prestamos/{loan['id']}",
+            headers=headers,
+            json={"fecha_limite": date.today().isoformat()},
+        ).status_code
+        == 200
+    )
+    assert (
+        client.post(
+            f"/api/v1/prestamos/{loan['id']}/devolucion",
+            headers=headers,
+            json={"fecha_devolucion": date.today().isoformat()},
+        ).status_code
+        == 200
+    )
+
+    for path in (
+        "/api/v1/reportes/libros-mas-prestados",
+        "/api/v1/reportes/categorias",
+        "/api/v1/reportes/prestamos-vencidos",
+        "/api/v1/reportes/socios-con-multas",
+        "/api/v1/reportes/autores",
+        "/api/v1/reportes/resumen",
+    ):
+        assert client.get(path, headers=headers).status_code == 200, path
+
+    second_member = client.post(
+        "/api/v1/socios",
+        headers=headers,
+        json={"nombre": "Otro Socio", "email": "otro-crud@example.com"},
+    ).json()
+    open_loan = client.post(
+        "/api/v1/prestamos",
+        headers=headers,
+        json={"libro_id": book["id"], "socio_id": second_member["id"]},
+    ).json()
+    assert (
+        client.delete(
+            f"/api/v1/prestamos/{open_loan['id']}", headers=headers
+        ).status_code
+        == 204
+    )
+    assert (
+        client.delete(
+            f"/api/v1/socios/{second_member['id']}", headers=headers
+        ).status_code
+        == 204
+    )
+
+    assert (
+        client.delete(f"/api/v1/prestamos/{loan['id']}", headers=headers).status_code
+        == 409
+    )
+    unused_author = client.post(
+        "/api/v1/autores", headers=headers, json={"nombre": "Autora para eliminar"}
+    ).json()
+    unused_category = client.post(
+        "/api/v1/categorias",
+        headers=headers,
+        json={"nombre": "Categoría para eliminar"},
+    ).json()
+    unused_book = client.post(
+        "/api/v1/libros",
+        headers=headers,
+        json={
+            "titulo": "libro para eliminar",
+            "isbn": "9780000000002",
+            "anio_publicacion": 2021,
+            "ejemplares": 1,
+            "autor_id": unused_author["id"],
+            "categoria_ids": [unused_category["id"]],
+        },
+    ).json()
+    assert (
+        client.delete(
+            f"/api/v1/libros/{unused_book['id']}", headers=headers
+        ).status_code
+        == 204
+    )
+    assert (
+        client.delete(
+            f"/api/v1/autores/{unused_author['id']}", headers=headers
+        ).status_code
+        == 204
+    )
+    assert (
+        client.delete(
+            f"/api/v1/categorias/{unused_category['id']}", headers=headers
+        ).status_code
+        == 204
+    )
+    assert (
+        client.delete(f"/api/v1/socios/{member['id']}", headers=headers).status_code
+        == 204
+    )
+    assert (
+        client.get(f"/api/v1/socios/{member['id']}", headers=headers).json()["activo"]
+        is False
+    )

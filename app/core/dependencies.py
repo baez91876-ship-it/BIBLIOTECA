@@ -1,18 +1,19 @@
 """Dependencias compartidas para paginación y acceso a la base de datos."""
 
-from dataclasses import dataclass
 import re
-from typing import Annotated, Callable
+from collections.abc import Callable
+from dataclasses import dataclass
+from typing import Annotated
 
 from fastapi import Depends, Query, Request
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.orm import Session
 
+from ..models import Usuario
+from .database import get_db
 from .exceptions import CuentaBloqueada, NoAutenticado, Prohibido
 from .roles import Rol
 from .security import decode_token
-from .database import get_db
-from ..models import Usuario
 
 
 @dataclass(frozen=True)
@@ -104,7 +105,9 @@ def require_api_access(
     if user is None and not public_catalog:
         raise NoAutenticado("Se requiere autenticación")
     if path.startswith("/reportes") and user is not None and user.rol not in staff:
-        raise Prohibido("Solo bibliotecarios y administradores pueden consultar reportes")
+        raise Prohibido(
+            "Solo bibliotecarios y administradores pueden consultar reportes"
+        )
     if request.method in {"POST", "PATCH", "DELETE"}:
         member_loan = path == "/prestamos" and request.method == "POST"
         own_member_patch = (
@@ -114,9 +117,11 @@ def require_api_access(
             and user.rol == Rol.socio.value
         )
         if user is None or (
-            user.rol not in staff and not (
-            member_loan and user.rol == Rol.socio.value
-            ) and not own_member_patch
+            user.rol not in staff
+            and not (member_loan and user.rol == Rol.socio.value)
+            and not own_member_patch
         ):
-            raise Prohibido("Solo bibliotecarios y administradores pueden modificar este recurso")
+            raise Prohibido(
+                "Solo bibliotecarios y administradores pueden modificar este recurso"
+            )
     return user

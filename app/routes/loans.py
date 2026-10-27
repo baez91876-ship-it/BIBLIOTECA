@@ -6,6 +6,7 @@ from ..controllers import loans
 from ..core.dependencies import ApiUserDep, PaginationDep, SessionDep
 from ..core.exceptions import NoEncontrado, Prohibido
 from ..models import Prestamo
+from ..schemas.pagination import Pagina, crear_pagina
 from ..schemas.prestamo import (
     DevolucionCreate,
     EstadoPrestamo,
@@ -13,7 +14,6 @@ from ..schemas.prestamo import (
     PrestamoPatch,
     PrestamoRead,
 )
-from ..schemas.pagination import Pagina, crear_pagina
 
 router = APIRouter(prefix="/prestamos", tags=["prestamos"])
 
@@ -51,9 +51,7 @@ def listar_prestamos(
 
 
 @router.get("/{prestamo_id}", response_model=PrestamoRead)
-def obtener_prestamo(
-    prestamo_id: int, db: SessionDep, user: ApiUserDep
-) -> Prestamo:
+def obtener_prestamo(prestamo_id: int, db: SessionDep, user: ApiUserDep) -> Prestamo:
     """Devuelve el préstamo identificado por su ID."""
     owner_id = user.socio_id if user is not None and user.rol == "socio" else None
     if user is not None and user.rol == "socio" and owner_id is None:
@@ -62,13 +60,14 @@ def obtener_prestamo(
 
 
 @router.post("", response_model=PrestamoRead, status_code=status.HTTP_201_CREATED)
-def crear_prestamo(
-    data: PrestamoCreate, db: SessionDep, user: ApiUserDep
-) -> Prestamo:
+def crear_prestamo(data: PrestamoCreate, db: SessionDep, user: ApiUserDep) -> Prestamo:
     """Abre un préstamo si el socio y el libro cumplen las reglas de negocio."""
-    if user is not None and user.rol == "socio":
-        if user.socio_id is None or data.socio_id != user.socio_id:
-            raise Prohibido("Solo puedes solicitar préstamos para tu propia cuenta")
+    if (
+        user is not None
+        and user.rol == "socio"
+        and (user.socio_id is None or data.socio_id != user.socio_id)
+    ):
+        raise Prohibido("Solo puedes solicitar préstamos para tu propia cuenta")
     return loans.create_loan(data, db)
 
 

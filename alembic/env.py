@@ -1,16 +1,13 @@
 """Configuración Alembic enlazada a los Settings y metadata del proyecto."""
 
-import importlib
-import importlib.util
 from logging.config import fileConfig
 
-from alembic import context
 from sqlalchemy import engine_from_config, pool
 
-package_name = "app" if importlib.util.find_spec("app") else "APP"
-config_module = importlib.import_module(f"{package_name}.core.config")
-database_module = importlib.import_module(f"{package_name}.core.database")
-importlib.import_module(f"{package_name}.models")
+import app.models  # noqa: F401
+from alembic import context
+from app.core import config as config_module
+from app.core import database as database_module
 
 config = context.config
 if config.config_file_name is not None:
