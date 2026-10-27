@@ -67,6 +67,10 @@ La página publicada está en
 <https://baez91876-ship-it.github.io/BIBLIOTECA/>. El repositorio se llama
 `BIBLIOTECA`; la URL anterior con `BIBBLIOTECA` ya no es válida.
 
+Si la API no responde, la interfaz muestra el catálogo guardado en modo de solo
+lectura. Para recuperar el inicio de sesión y la gestión de datos, la API de
+Render debe estar disponible.
+
 La URL de la API y el origen CORS se configuran para Render en
 [`docs/api-config.js`](./docs/api-config.js) y [`render.yaml`](./render.yaml).
 Pages no conserva credenciales; para operaciones de administración inicia sesión

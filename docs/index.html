@@ -5,18 +5,18 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#f7f5f0">
-  <title>Biblioteca | Gestión de libros</title>
-  <link rel="stylesheet" href="static/styles.css?v=auth-v2">
+  <title>Libreria | Gestión de libros</title>
+  <link rel="stylesheet" href="static/styles.css?v=auth-v3">
   <script src="api-config.js?v=api-origin-v2" defer></script>
-  <script src="static/app.js?v=auth-v2" defer></script>
+  <script src="static/app.js?v=auth-v3" defer></script>
 </head>
 <body>
   <!-- Navegación lateral y contenido principal de la biblioteca. -->
   <div class="app-shell">
     <aside class="sidebar">
-      <a class="brand" href="./" aria-label="Inicio Biblioteca">
-        <span class="brand-icon" aria-hidden="true">B</span>
-        <span>hojas<span class="brand-period">.</span></span>
+      <a class="brand" href="./" aria-label="Inicio Libreria">
+        <span class="brand-icon" aria-hidden="true">L</span>
+        <span>Libreria<span class="brand-period">.</span></span>
       </a>
       <div class="sidebar-label">BIBLIOTECA</div>
       <button class="nav-link active" type="button" data-view="libros" aria-current="page">
@@ -140,11 +140,13 @@
           <span class="api-docs-chevron" aria-hidden="true">⌄</span>
         </summary>
         <div class="api-docs-content">
+          <p id="api-docs-status" class="api-docs-status" role="status" hidden></p>
           <iframe
             id="api-docs-frame"
             title="Documentación interactiva de la API"
             loading="lazy"
             referrerpolicy="no-referrer"
+            hidden
           ></iframe>
         </div>
       </details>

@@ -15,6 +15,9 @@ const recordDialog = document.querySelector("#record-dialog");
 const recordForm = document.querySelector("#record-form");
 const recordFields = document.querySelector("#record-fields");
 const recordError = document.querySelector("#record-error");
+const apiDocsPanel = document.querySelector("#api-docs");
+const apiDocsFrame = document.querySelector("#api-docs-frame");
+const apiDocsStatus = document.querySelector("#api-docs-status");
 
 let books = [];
 let authors = [];
@@ -31,6 +34,7 @@ let refreshInProgress = null;
 const apiBaseUrl = (window.BIBLIOTECA_API_URL || "").replace(/\/+$/, "");
 const pagesApiNotConfigured =
   window.location.hostname.endsWith(".github.io") && !apiBaseUrl;
+let readOnlyCatalog = pagesApiNotConfigured;
 
 // Metadatos de tablas y formularios para las pantallas de administración.
 const resources = {
@@ -109,17 +113,58 @@ const resources = {
 };
 
 // GitHub Pages puede servir el catálogo local cuando no se configura una API.
-if (pagesApiNotConfigured) {
+if (readOnlyCatalog) {
+  configureReadOnlyCatalog();
+}
+
+apiDocsPanel.addEventListener("toggle", () => {
+  if (apiDocsPanel.open && !apiDocsFrame.src && !readOnlyCatalog) {
+    loadApiDocs();
+  }
+});
+
+async function loadApiDocs() {
+  apiDocsStatus.hidden = false;
+  apiDocsStatus.textContent = "Conectando con la documentación de la API...";
+  if (!apiBaseUrl) {
+    apiDocsFrame.src = "/docs";
+    apiDocsFrame.hidden = false;
+    apiDocsStatus.hidden = true;
+    return;
+  }
+
+  try {
+    const response = await fetch(`${apiBaseUrl}/openapi.json`, {
+      signal: AbortSignal.timeout(10000),
+    });
+    if (!response.ok) {
+      throw new Error(`Error ${response.status}`);
+    }
+    apiDocsFrame.src = `${apiBaseUrl}/docs`;
+    apiDocsFrame.hidden = false;
+    apiDocsStatus.hidden = true;
+  } catch (error) {
+    const reason = error instanceof Error && error.message.startsWith("Error ")
+      ? ` (${error.message.slice(6)})`
+      : "";
+    apiDocsStatus.textContent =
+      `Swagger no está disponible${reason}. La API publicada no responde; consulta la disponibilidad del servicio en Render.`;
+  }
+}
+
+function configureReadOnlyCatalog() {
+  readOnlyCatalog = true;
   document.querySelector("#connection-label").textContent = "Catálogo estático";
   document.querySelector("#database-label").textContent = "Solo lectura";
   document.querySelector("#add-book").hidden = true;
   document.querySelector("#refresh-books").hidden = true;
+  document.querySelector("#add-record").hidden = true;
+  document.querySelector("#refresh-records").hidden = true;
+  document.querySelector("#api-docs").hidden = true;
   for (const link of document.querySelectorAll(".nav-link[data-view]:not([data-view='libros'])")) {
     link.hidden = true;
   }
-  document.querySelector("#api-docs").hidden = true;
-} else {
-  document.querySelector("#api-docs-frame").src = `${apiBaseUrl}/docs`;
+  updateAuthentication();
 }
 
 function isStaff() {
@@ -130,16 +175,16 @@ function updateAuthentication() {
   const loginButton = document.querySelector("#login-button");
   const logoutButton = document.querySelector("#logout-button");
   const userLabel = document.querySelector("#signed-in-user");
-  loginButton.hidden = pagesApiNotConfigured || Boolean(currentUser);
+  loginButton.hidden = readOnlyCatalog || Boolean(currentUser);
   logoutButton.hidden = !currentUser;
   userLabel.hidden = !currentUser;
   userLabel.textContent = currentUser
     ? `${currentUser.nombre} · ${currentUser.rol}`
     : "";
-  document.querySelector("#add-book").hidden = !isStaff();
-  document.querySelector("#add-record").hidden = !isStaff() || pagesApiNotConfigured;
+  document.querySelector("#add-book").hidden = !isStaff() || readOnlyCatalog;
+  document.querySelector("#add-record").hidden = !isStaff() || readOnlyCatalog;
   for (const link of document.querySelectorAll(".nav-link[data-view]:not([data-view='libros'])")) {
-    link.hidden = !isStaff() || pagesApiNotConfigured;
+    link.hidden = !isStaff() || readOnlyCatalog;
   }
   if (!isStaff() && activeView !== "libros") setView("libros");
 }
@@ -171,7 +216,7 @@ async function renewSession() {
 function showNotice(message) {
   // Presenta avisos de error o de solo lectura junto a la colección.
   notice.textContent = message;
-  notice.classList.toggle("read-only-notice", pagesApiNotConfigured);
+  notice.classList.toggle("read-only-notice", readOnlyCatalog);
   notice.hidden = false;
 }
 
@@ -184,9 +229,9 @@ function hideNotice() {
 
 async function apiRequest(path, options = {}) {
   // Centraliza errores HTTP y evita solicitudes de escritura en Pages estático.
-  if (pagesApiNotConfigured) {
+  if (readOnlyCatalog) {
     throw new Error(
-      "La interfaz está publicada, pero la API aún no está desplegada. Configura su URL en api-config.js.",
+      "La API no está disponible; esta vista funciona en modo de solo lectura.",
     );
   }
   const { retrying = false, ...requestOptions } = options;
@@ -272,7 +317,7 @@ function renderBooks() {
     titleCell.append(title);
 
     const actions = document.createElement("td");
-    if (isStaff()) {
+    if (isStaff() && !readOnlyCatalog) {
       const actionGroup = document.createElement("div");
       actionGroup.className = "row-actions";
       const editButton = document.createElement("button");
@@ -320,7 +365,7 @@ function renderBooks() {
   if (books.length === 0) {
     emptyTitle.textContent = "Tu próxima lectura empieza aquí";
     emptyDescription.textContent = "Añade un libro para comenzar tu colección.";
-    document.querySelector("#empty-add-book").hidden = !isStaff();
+    document.querySelector("#empty-add-book").hidden = !isStaff() || readOnlyCatalog;
   } else {
     emptyTitle.textContent = "No encontramos ese libro";
     emptyDescription.textContent = "Prueba con otro título o nombre de autor.";
@@ -331,20 +376,18 @@ function renderBooks() {
 async function loadBooks() {
   // Carga el catálogo estático o combina los recursos de la API en vivo.
   hideNotice();
-  try {
-    if (pagesApiNotConfigured) {
-      const response = await fetch("catalogo.json");
-      if (!response.ok) {
-        throw new Error(`Error ${response.status}: no se pudo cargar el catálogo.`);
-      }
-      ({ libros: books, autores: authors, categorias: categories } =
-        await response.json());
-      renderBooks();
-      showNotice(
-        `Catálogo estático: ${books.length} libros de ${authors.length} autores. Vista de solo lectura; los cambios requieren una API pública.`,
+  if (readOnlyCatalog) {
+    try {
+      await loadStaticCatalog(
+        "Catálogo estático. Vista de solo lectura; los cambios requieren una API pública.",
       );
-      return;
+    } catch (error) {
+      showNotice(`No se pudo cargar el catálogo guardado: ${error.message}`);
     }
+    return;
+  }
+
+  try {
     [books, authors, categories] = await Promise.all([
       listAll("/libros"),
       listAll("/autores"),
@@ -352,8 +395,30 @@ async function loadBooks() {
     ]);
     renderBooks();
   } catch (error) {
-    showNotice(`No se pudo cargar la colección: ${error.message}`);
+    configureReadOnlyCatalog();
+    try {
+      await loadStaticCatalog(
+        `No se pudo conectar con la API (${apiBaseUrl || window.location.origin}). Se muestra el catálogo guardado en modo de solo lectura.`,
+      );
+    } catch (catalogError) {
+      showNotice(
+        `No se pudo cargar la colección desde la API ni el catálogo guardado: ${catalogError.message}`,
+      );
+    }
   }
+}
+
+async function loadStaticCatalog(noticeMessage) {
+  const response = await fetch("catalogo.json");
+  if (!response.ok) {
+    throw new Error(`Error ${response.status}: no se pudo cargar el catálogo.`);
+  }
+  ({ libros: books, autores: authors, categorias: categories } =
+    await response.json());
+  renderBooks();
+  showNotice(
+    `${noticeMessage} Hay ${books.length} libros de ${authors.length} autores.`,
+  );
 }
 
 async function loadResource(resourceName) {
@@ -845,6 +910,6 @@ managementList.addEventListener("click", async (event) => {
   }
 });
 
-document.querySelector("#refresh-records").hidden = pagesApiNotConfigured;
+document.querySelector("#refresh-records").hidden = readOnlyCatalog;
 updateAuthentication();
 loadBooks();

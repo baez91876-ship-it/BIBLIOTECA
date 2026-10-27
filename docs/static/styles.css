@@ -146,6 +146,7 @@ th:last-child, td:last-child { width: 100px; text-align: right; }
 .page-footer span { margin-left: 4px; color: var(--orange); }
 .notice { margin: 0 20px 12px; padding: 10px 12px; border-radius: 6px; background: #f9eeea; color: #a74e43; font-size: 11px; }
 .notice.read-only-notice { background: #eef3ec; color: #526951; }
+.api-docs-status { margin: 0; padding: 18px; color: #657366; font-size: 12px; }
 .book-dialog { width: min(440px, calc(100vw - 32px)); padding: 25px; border: 1px solid var(--line); border-radius: 12px; background: #fff; color: var(--ink); box-shadow: 0 25px 80px #1c30222b; }
 .book-dialog::backdrop { background: #1e2a2390; backdrop-filter: blur(2px); }
 .dialog-heading { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 22px; }
