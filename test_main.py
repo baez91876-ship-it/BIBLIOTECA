@@ -330,6 +330,36 @@ class BibliotecaApiTests(unittest.TestCase):
                 self.assertEqual(response.status_code, 404)
                 self.assertEqual(response.json(), {"detail": detail})
 
+    def test_formato_de_errores_de_validacion_y_respuesta_204(self):
+        """Valida el formato Pydantic para 422 y la respuesta vacía para 204."""
+        invalid_book = self.client.post(
+            "/libros",
+            json={
+                "titulo": "Libro de prueba",
+                "isbn": "123",
+                "anio_publicacion": 2020,
+                "ejemplares": 1,
+                "autor_id": 1,
+                "categoria_ids": [1],
+            },
+        )
+        self.assertEqual(invalid_book.status_code, 422)
+        validation_errors = invalid_book.json()["detail"]
+        isbn_error = next(
+            error for error in validation_errors if error["loc"] == ["body", "isbn"]
+        )
+        self.assertIsInstance(isbn_error["msg"], str)
+
+        created_category = self.client.post(
+            "/categorias", json={"nombre": "Pruebas"}
+        )
+        self.assertEqual(created_category.status_code, 201)
+        deleted_category = self.client.delete(
+            f"/categorias/{created_category.json()['id']}"
+        )
+        self.assertEqual(deleted_category.status_code, 204)
+        self.assertEqual(deleted_category.content, b"")
+
     def test_cada_reporte_ejecuta_una_consulta_sql(self):
         """Comprueba que cada endpoint de reporte ejecuta una sola sentencia."""
         statements = []
