@@ -45,6 +45,10 @@ La interfaz estática está organizada en `docs/` y puede publicarse desde
 primero hay que desplegar la API y su base de datos en un servicio que admita
 Python y PostgreSQL.
 
+La página publicada está en
+<https://baez91876-ship-it.github.io/BIBLIOTECA/>. El repositorio se llama
+`BIBLIOTECA`; la URL anterior con `BIBBLIOTECA` ya no es válida.
+
 Antes de publicar, define la URL pública de esa API en `api-config.js`:
 
 ```js
