@@ -141,7 +141,7 @@ def health():
     """Comprueba que la base conectada sea la base esperada."""
     with engine.connect() as connection:
         database_name = connection.scalar(text("SELECT current_database()"))
-        if database_name != "LIBRERIA":
+        if database_name is None or database_name.casefold() != "libreria":
             raise RuntimeError("La aplicación no está conectada a LIBRERIA.")
     return {"status": "ok", "database": database_name}
 

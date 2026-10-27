@@ -49,20 +49,29 @@ La página publicada está en
 <https://baez91876-ship-it.github.io/BIBLIOTECA/>. El repositorio se llama
 `BIBLIOTECA`; la URL anterior con `BIBBLIOTECA` ya no es válida.
 
-Antes de publicar, define la URL pública de esa API en `api-config.js`:
+La URL de la API y el origen CORS se configuran para Render en `docs/api-config.js`
+y `render.yaml`. Sin un backend público disponible, Pages no puede crear ni
+modificar registros; para actualizar su copia de solo lectura, exporta el
+catálogo desde la API local y sube `docs/catalogo.json`.
 
-```js
-window.BIBLIOTECA_API_URL = "https://URL-PUBLICA-DE-TU-API";
-```
+## Desplegar API y habilitar altas en GitHub Pages
 
-En el servicio de la API, configura `CORS_ALLOWED_ORIGINS` con el origen de
-Pages (por ejemplo, `https://baez91876-ship-it.github.io`, sin la ruta del
-repositorio) y vuelve a desplegarla. El valor vacío de ejemplo solo sirve para
-uso local o cuando la interfaz y API comparten origen; `127.0.0.1` no es una
-URL pública. Mientras la API pública no esté configurada, Pages muestra la
-copia de solo lectura de `catalogo.json`. Actualiza ese archivo desde la API
-local y súbelo de nuevo cuando quieras refrescar la copia pública. Para habilitar
-altas, ediciones, eliminaciones y préstamos en vivo, configura una API pública.
+GitHub Pages solo publica la interfaz. El archivo `render.yaml` prepara la API
+FastAPI y una base PostgreSQL gratuita en Render. Para desplegarlos, abre el
+Dashboard de Render, selecciona **New → Blueprint**, conecta este repositorio y
+confirma la creación de los recursos definidos por el Blueprint.
+
+El servicio queda configurado para aceptar solicitudes del origen de GitHub
+Pages y la interfaz apunta a
+`https://biblioteca-api-baez91876-ship-it.onrender.com`. Si Render asigna otra
+URL al servicio, actualiza `window.BIBLIOTECA_API_URL` en `docs/api-config.js`
+con la URL que aparece en el Dashboard y sube ese cambio. GitHub Pages volverá a
+publicar la interfaz automáticamente desde `main` / `/docs`.
+
+El plan gratuito puede tardar alrededor de un minuto en despertar tras estar
+inactivo, y su base PostgreSQL caduca a los 30 días. No uses ese plan para datos
+que necesites conservar; antes de la caducidad, actualiza a una base de pago y
+verifica la migración de los datos.
 
 ## Pruebas
 

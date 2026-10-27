@@ -73,6 +73,14 @@ class BibliotecaApiTests(unittest.TestCase):
         app.dependency_overrides.clear()
         self.engine.dispose()
 
+    def test_connection_string_render_usa_el_controlador_psycopg(self):
+        """Adapta la connection string de Render a la dependencia psycopg 3."""
+        url = database._parse_database_url(
+            "postgresql://user:password@localhost:5432/libreria"
+        )
+        self.assertEqual(url.drivername, "postgresql+psycopg")
+        self.assertEqual(url.database, "libreria")
+
     def test_24_casos_de_aceptacion_del_taller(self):
         """Comprueba reglas funcionales de catálogo, préstamos y reportes."""
         author_names = [
@@ -567,6 +575,10 @@ class BibliotecaApiTests(unittest.TestCase):
         self.assertEqual(
             self.client.get("/api-config.js").headers["content-type"],
             "application/javascript",
+        )
+        self.assertIn(
+            "https://biblioteca-api-baez91876-ship-it.onrender.com",
+            self.client.get("/api-config.js").text,
         )
         catalog = self.client.get("/catalogo.json")
         self.assertEqual(catalog.status_code, 200)
