@@ -24,6 +24,10 @@ let loans = [];
 let editingBookId = null;
 let activeView = "libros";
 let activeRecordId = null;
+let accessToken = null;
+let refreshToken = null;
+let currentUser = null;
+let refreshInProgress = null;
 const apiBaseUrl = (window.BIBLIOTECA_API_URL || "").replace(/\/+$/, "");
 const pagesApiNotConfigured =
   window.location.hostname.endsWith(".github.io") && !apiBaseUrl;
@@ -118,6 +122,52 @@ if (pagesApiNotConfigured) {
   document.querySelector("#api-docs-frame").src = `${apiBaseUrl}/docs`;
 }
 
+function isStaff() {
+  return ["bibliotecario", "administrador"].includes(currentUser?.rol);
+}
+
+function updateAuthentication() {
+  const loginButton = document.querySelector("#login-button");
+  const logoutButton = document.querySelector("#logout-button");
+  const userLabel = document.querySelector("#signed-in-user");
+  loginButton.hidden = pagesApiNotConfigured || Boolean(currentUser);
+  logoutButton.hidden = !currentUser;
+  userLabel.hidden = !currentUser;
+  userLabel.textContent = currentUser
+    ? `${currentUser.nombre} · ${currentUser.rol}`
+    : "";
+  document.querySelector("#add-book").hidden = !isStaff();
+  document.querySelector("#add-record").hidden = !isStaff() || pagesApiNotConfigured;
+  for (const link of document.querySelectorAll(".nav-link[data-view]:not([data-view='libros'])")) {
+    link.hidden = !isStaff() || pagesApiNotConfigured;
+  }
+  if (!isStaff() && activeView !== "libros") setView("libros");
+}
+
+async function renewSession() {
+  if (!refreshToken) return false;
+  if (!refreshInProgress) {
+    refreshInProgress = (async () => {
+      const response = await fetch(`${apiBaseUrl}/api/v1/auth/refresh`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ refresh_token: refreshToken }),
+      });
+      if (!response.ok) return false;
+      ({ access_token: accessToken, refresh_token: refreshToken } =
+        await response.json());
+      return true;
+    })();
+  }
+  try {
+    return await refreshInProgress;
+  } catch {
+    return false;
+  } finally {
+    refreshInProgress = null;
+  }
+}
+
 function showNotice(message) {
   // Presenta avisos de error o de solo lectura junto a la colección.
   notice.textContent = message;
@@ -139,13 +189,24 @@ async function apiRequest(path, options = {}) {
       "La interfaz está publicada, pero la API aún no está desplegada. Configura su URL en api-config.js.",
     );
   }
-  const response = await fetch(`${apiBaseUrl}${path}`, {
-    ...options,
+  const { retrying = false, ...requestOptions } = options;
+  const response = await fetch(`${apiBaseUrl}/api/v1${path}`, {
+    ...requestOptions,
     headers: {
       ...(options.body ? { "Content-Type": "application/json" } : {}),
+      ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
       ...options.headers,
     },
   });
+  if (response.status === 401 && refreshToken && !retrying) {
+    if (await renewSession()) {
+      return apiRequest(path, { ...options, retrying: true });
+    }
+    accessToken = null;
+    refreshToken = null;
+    currentUser = null;
+    updateAuthentication();
+  }
   if (!response.ok) {
     let detail = `Error ${response.status}: no se pudo completar la operación.`;
     try {
@@ -168,8 +229,9 @@ async function listAll(path) {
   const records = [];
   for (let skip = 0; ; skip += 100) {
     const page = await apiRequest(`${path}?skip=${skip}&limit=100`);
-    records.push(...page);
-    if (page.length < 100) return records;
+    const items = Array.isArray(page) ? page : page.items;
+    records.push(...items);
+    if (items.length < 100) return records;
   }
 }
 
@@ -210,7 +272,7 @@ function renderBooks() {
     titleCell.append(title);
 
     const actions = document.createElement("td");
-    if (!pagesApiNotConfigured) {
+    if (isStaff()) {
       const actionGroup = document.createElement("div");
       actionGroup.className = "row-actions";
       const editButton = document.createElement("button");
@@ -258,7 +320,7 @@ function renderBooks() {
   if (books.length === 0) {
     emptyTitle.textContent = "Tu próxima lectura empieza aquí";
     emptyDescription.textContent = "Añade un libro para comenzar tu colección.";
-    document.querySelector("#empty-add-book").hidden = false;
+    document.querySelector("#empty-add-book").hidden = !isStaff();
   } else {
     emptyTitle.textContent = "No encontramos ese libro";
     emptyDescription.textContent = "Prueba con otro título o nombre de autor.";
@@ -598,6 +660,71 @@ managementSearch.addEventListener("input", () => renderManagement(activeView));
 document.querySelector("#close-record-dialog").addEventListener("click", () => recordDialog.close());
 document.querySelector("#cancel-record-dialog").addEventListener("click", () => recordDialog.close());
 
+const loginDialog = document.querySelector("#login-dialog");
+const loginForm = document.querySelector("#login-form");
+const loginError = document.querySelector("#login-error");
+document.querySelector("#login-button").addEventListener("click", () => {
+  loginError.hidden = true;
+  loginDialog.showModal();
+});
+document.querySelector("#close-login-dialog").addEventListener("click", () => loginDialog.close());
+document.querySelector("#cancel-login").addEventListener("click", () => loginDialog.close());
+document.querySelector("#logout-button").addEventListener("click", async () => {
+  if (refreshToken) {
+    try {
+      await fetch(`${apiBaseUrl}/api/v1/auth/logout`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ refresh_token: refreshToken }),
+      });
+    } catch (error) {
+      showNotice(`La sesión se cerró localmente; no se pudo revocar el token: ${error.message}`);
+    }
+  }
+  accessToken = null;
+  refreshToken = null;
+  currentUser = null;
+  updateAuthentication();
+  await loadBooks();
+});
+loginForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const submitButton = document.querySelector("#submit-login");
+  submitButton.disabled = true;
+  loginError.hidden = true;
+  try {
+    const formData = new FormData(loginForm);
+    const response = await fetch(`${apiBaseUrl}/api/v1/auth/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams(formData),
+    });
+    const tokens = await response.json();
+    if (!response.ok) {
+      throw new Error(tokens.detail || `Error ${response.status}: no se pudo iniciar sesión.`);
+    }
+    accessToken = tokens.access_token;
+    refreshToken = tokens.refresh_token;
+    const profileResponse = await fetch(`${apiBaseUrl}/api/v1/auth/me`, {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    });
+    if (!profileResponse.ok) throw new Error("No se pudo validar la sesión.");
+    currentUser = await profileResponse.json();
+    loginForm.reset();
+    loginDialog.close();
+    updateAuthentication();
+    await loadBooks();
+  } catch (error) {
+    accessToken = null;
+    refreshToken = null;
+    currentUser = null;
+    loginError.textContent = error.message;
+    loginError.hidden = false;
+  } finally {
+    submitButton.disabled = false;
+  }
+});
+
 recordForm.addEventListener("submit", async (event) => {
   // Guarda altas y cambios de los recursos administrados desde el formulario dinámico.
   event.preventDefault();
@@ -667,6 +794,6 @@ managementList.addEventListener("click", async (event) => {
   }
 });
 
-document.querySelector("#add-record").hidden = pagesApiNotConfigured;
 document.querySelector("#refresh-records").hidden = pagesApiNotConfigured;
+updateAuthentication();
 loadBooks();

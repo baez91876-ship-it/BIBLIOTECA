@@ -23,17 +23,31 @@ const python = existsSync(virtualEnvPython)
     ? "python"
     : "python3";
 
-const server = spawn(
+const migration = spawn(
   python,
-  ["-m", "uvicorn", `${packageName}.main:app`, "--reload"],
+  ["-m", `${packageName}.scripts.migrate`],
   { cwd: projectRoot, stdio: "inherit" }
 );
 
-server.on("error", (error) => {
-  console.error(`No se pudo iniciar Python (${python}): ${error.message}`);
+function exitWithError(error, operation) {
+  console.error(`No se pudo ${operation} (${python}): ${error.message}`);
   process.exitCode = 1;
-});
+}
 
-server.on("exit", (code, signal) => {
-  process.exitCode = code ?? (signal ? 1 : 0);
+migration.on("error", (error) => exitWithError(error, "ejecutar Alembic"));
+
+migration.on("exit", (code, signal) => {
+  if (code !== 0 || signal) {
+    process.exitCode = code ?? 1;
+    return;
+  }
+  const server = spawn(
+    python,
+    ["-m", "uvicorn", `${packageName}.main:app`, "--reload"],
+    { cwd: projectRoot, stdio: "inherit" }
+  );
+  server.on("error", (error) => exitWithError(error, "iniciar Uvicorn"));
+  server.on("exit", (serverCode, serverSignal) => {
+    process.exitCode = serverCode ?? (serverSignal ? 1 : 0);
+  });
 });

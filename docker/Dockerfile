@@ -14,14 +14,14 @@ RUN pip install --no-cache-dir -r requirements.txt \
 
 COPY --chown=appuser:appuser . .
 
-# Ejecuta la aplicación como usuario dedicado y expone el puerto de API.
+# Ejecuta las migraciones versionadas y luego inicia la API como usuario dedicado.
 USER appuser
 
 EXPOSE 8000
 
-# Comprueba la salud de la API local antes de marcar el contenedor disponible.
+# Comprueba que la API y su conexión de base de datos respondan.
 HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
-    CMD python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=3)"
+    CMD python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/v1/health', timeout=3)"
 
-# El nombre del paquete cambia de mayúsculas según el checkout en Windows.
-CMD ["sh", "-c", "if [ -d /app/app ]; then exec uvicorn app.main:app --host 0.0.0.0 --port 8000; else exec uvicorn APP.main:app --host 0.0.0.0 --port 8000; fi"]
+# El paquete se normaliza al copiar desde un checkout Windows a la imagen Linux.
+CMD ["sh", "-c", "if [ -d /app/app ]; then python -m app.scripts.migrate && exec uvicorn app.main:app --host 0.0.0.0 --port 8000; else python -m APP.scripts.migrate && exec uvicorn APP.main:app --host 0.0.0.0 --port 8000; fi"]

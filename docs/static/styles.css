@@ -65,6 +65,8 @@ button { cursor: pointer; }
   display: flex; min-height: 67px; align-items: center; justify-content: space-between;
   border-bottom: 1px solid #e9e7e0; color: #81877f; font-size: 11px;
 }
+.topbar-actions { display: flex; align-items: center; gap: 8px; }
+#signed-in-user { color: #657366; font-size: 10px; }
 .breadcrumb span { margin: 0 8px; color: #c6c7c0; }
 .database-badge { display: flex; align-items: center; gap: 8px; padding: 7px 11px; border: 1px solid #e8e9e2; border-radius: 20px; background: #fff; color: #657366; font-size: 10px; }
 
@@ -178,6 +180,9 @@ th:last-child, td:last-child { width: 100px; text-align: right; }
   .topbar { min-height: 48px; }
   .breadcrumb { font-size: 10px; }
   .database-badge { padding: 6px 8px; font-size: 9px; }
+  .topbar-actions { gap: 5px; }
+  .topbar-actions .button { min-height: 32px; padding: 0 8px; font-size: 9px; }
+  #signed-in-user { display: none; }
   .page-heading { align-items: flex-start; padding: 27px 0 21px; }
   .page-heading .button { flex-shrink: 0; padding: 0 10px; font-size: 10px; }
   h1 { font-size: 33px; }

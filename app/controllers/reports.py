@@ -9,7 +9,9 @@ from ..core.dependencies import Pagination
 from ..models import Autor, Categoria, Libro, Prestamo, Socio, libro_categoria
 
 
-def most_borrowed_books(db: Session, skip: int, limit: int) -> list[dict]:
+def most_borrowed_books(
+    db: Session, skip: int, limit: int, include_total: bool = False
+) -> list[dict] | tuple[list[dict], int]:
     """Devuelve el ranking de libros ordenado por cantidad de préstamos."""
     query = (
         select(
@@ -25,10 +27,14 @@ def most_borrowed_books(db: Session, skip: int, limit: int) -> list[dict]:
         .offset(skip)
         .limit(limit)
     )
+    if include_total:
+        return _execute_report_page(db, query)
     return [dict(row._mapping) for row in db.execute(query)]
 
 
-def books_by_category(db: Session, pagination: Pagination) -> list[dict]:
+def books_by_category(
+    db: Session, pagination: Pagination, include_total: bool = False
+) -> list[dict] | tuple[list[dict], int]:
     """Cuenta libros por categoría, incluidas las categorías vacías."""
     query = (
         select(
@@ -42,10 +48,14 @@ def books_by_category(db: Session, pagination: Pagination) -> list[dict]:
         .offset(pagination.skip)
         .limit(pagination.limit)
     )
+    if include_total:
+        return _execute_report_page(db, query)
     return [dict(row._mapping) for row in db.execute(query)]
 
 
-def overdue_loans(db: Session, pagination: Pagination) -> list[dict]:
+def overdue_loans(
+    db: Session, pagination: Pagination, include_total: bool = False
+) -> list[dict] | tuple[list[dict], int]:
     """Lista préstamos sin devolver y calcula sus días de retraso."""
     late_days = _days_late_expression(db)
     query = (
@@ -67,10 +77,14 @@ def overdue_loans(db: Session, pagination: Pagination) -> list[dict]:
         .offset(pagination.skip)
         .limit(pagination.limit)
     )
+    if include_total:
+        return _execute_report_page(db, query)
     return [dict(row._mapping) for row in db.execute(query)]
 
 
-def members_with_fines(db: Session, pagination: Pagination) -> list[dict]:
+def members_with_fines(
+    db: Session, pagination: Pagination, include_total: bool = False
+) -> list[dict] | tuple[list[dict], int]:
     """Agrupa multas positivas por socio y ordena por importe acumulado."""
     fine_total = func.sum(Prestamo.multa)
     fine_loans = func.count(case((Prestamo.multa > 0, Prestamo.id)))
@@ -89,10 +103,14 @@ def members_with_fines(db: Session, pagination: Pagination) -> list[dict]:
         .offset(pagination.skip)
         .limit(pagination.limit)
     )
+    if include_total:
+        return _execute_report_page(db, query)
     return [dict(row._mapping) for row in db.execute(query)]
 
 
-def authors_summary(db: Session, pagination: Pagination) -> list[dict]:
+def authors_summary(
+    db: Session, pagination: Pagination, include_total: bool = False
+) -> list[dict] | tuple[list[dict], int]:
     """Resume libros, ejemplares y préstamos por autor sin duplicar agregados."""
     book_totals = (
         select(
@@ -133,6 +151,8 @@ def authors_summary(db: Session, pagination: Pagination) -> list[dict]:
         .offset(pagination.skip)
         .limit(pagination.limit)
     )
+    if include_total:
+        return _execute_report_page(db, query)
     return [dict(row._mapping) for row in db.execute(query)]
 
 
@@ -180,3 +200,16 @@ def _days_late_expression(db: Session):
         func.julianday(today) - func.julianday(Prestamo.fecha_limite),
         Integer,
     )
+
+
+def _execute_report_page(db: Session, query) -> tuple[list[dict], int]:
+    """Agrega el total con una función de ventana, manteniendo una sola consulta."""
+    rows = db.execute(query.add_columns(func.count().over().label("_total"))).all()
+    if not rows:
+        return [], 0
+    total = rows[0]._mapping["_total"]
+    items = [
+        {key: value for key, value in row._mapping.items() if key != "_total"}
+        for row in rows
+    ]
+    return items, total

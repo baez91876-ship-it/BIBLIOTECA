@@ -27,3 +27,21 @@ class ReglaNegocio(ErrorAplicacion):
     """Indica que la solicitud incumple una regla de negocio."""
 
     status_code = 422
+
+
+class NoAutenticado(ErrorAplicacion):
+    """Credenciales ausentes, expiradas o no válidas."""
+
+    status_code = 401
+
+
+class Prohibido(ErrorAplicacion):
+    """El usuario autenticado no tiene permiso para esta acción."""
+
+    status_code = 403
+
+
+class CuentaBloqueada(ErrorAplicacion):
+    """La cuenta superó el número permitido de intentos fallidos."""
+
+    status_code = 423

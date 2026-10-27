@@ -1,8 +1,13 @@
-# Dependencias de la API y validación de datos.
-fastapi==0.143.0
+# API, configuración, migraciones y controles de autenticación.
+fastapi[standard]==0.143.0
 uvicorn==0.54.0
 pydantic==2.14.1
+pydantic-settings>=2.8,<3
 email-validator==2.3.0
+alembic>=1.15,<2
+PyJWT>=2.10,<3
+pwdlib[argon2]>=0.2,<1
+slowapi>=0.1.9,<1
 
 # Acceso a PostgreSQL y carga de configuración local.
 SQLAlchemy==2.1.4

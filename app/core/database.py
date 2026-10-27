@@ -1,44 +1,42 @@
-"""Configuración de PostgreSQL y sesiones de SQLAlchemy."""
+"""Motor PostgreSQL y configuración común de los modelos ORM."""
 
-import os
-
-from dotenv import load_dotenv
-from sqlalchemy import create_engine
+from sqlalchemy import MetaData, create_engine
 from sqlalchemy.engine import URL, make_url
 from sqlalchemy.orm import DeclarativeBase, sessionmaker
 
-load_dotenv()
-
-DATABASE_URL = os.getenv("DATABASE_URL")
-if not DATABASE_URL:
-    raise RuntimeError(
-        "DATABASE_URL no está configurada. Define la conexión PostgreSQL "
-        "a la base de datos LIBRERIA en el archivo .env."
-    )
+from .config import get_settings
 
 
 def _parse_database_url(value: str) -> URL:
-    """Valida PostgreSQL LIBRERIA y usa el controlador psycopg instalado."""
+    """Valida PostgreSQL LIBRERIA y selecciona el controlador psycopg 3."""
     database_url = make_url(value)
     if database_url.drivername == "postgresql":
         database_url = database_url.set(drivername="postgresql+psycopg")
     if database_url.drivername != "postgresql+psycopg":
-        raise RuntimeError("La aplicación solo puede conectarse a PostgreSQL.")
+        raise ValueError("La aplicación solo puede conectarse a PostgreSQL.")
     if database_url.database is None or database_url.database.casefold() != "libreria":
-        raise RuntimeError(
-            "La aplicación solo puede conectarse a la base de datos LIBRERIA."
-        )
+        raise ValueError("La aplicación solo puede conectarse a la base libreria.")
     return database_url
 
 
-database_url = _parse_database_url(DATABASE_URL)
+NAMING_CONVENTION = {
+    "ix": "ix_%(table_name)s_%(column_0_name)s",
+    "uq": "uq_%(table_name)s_%(column_0_name)s",
+    "ck": "ck_%(table_name)s_%(constraint_name)s",
+    "fk": "fk_%(table_name)s_%(column_0_name)s_%(referred_table_name)s",
+    "pk": "pk_%(table_name)s",
+}
 
-engine = create_engine(database_url)
+engine = create_engine(
+    _parse_database_url(get_settings().database_url), pool_pre_ping=True
+)
 SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False)
 
 
 class Base(DeclarativeBase):
     """Clase base para registrar los modelos ORM de la aplicación."""
+
+    metadata = MetaData(naming_convention=NAMING_CONVENTION)
 
 
 def get_db():

@@ -6,9 +6,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#f7f5f0">
   <title>Biblioteca | Gestión de libros</title>
-  <link rel="stylesheet" href="static/styles.css?v=render-api">
-  <script src="api-config.js?v=render-api" defer></script>
-  <script src="static/app.js?v=render-api" defer></script>
+  <link rel="stylesheet" href="static/styles.css?v=auth-v2">
+  <script src="api-config.js?v=auth-v2" defer></script>
+  <script src="static/app.js?v=auth-v2" defer></script>
 </head>
 <body>
   <!-- Navegación lateral y contenido principal de la biblioteca. -->
@@ -44,7 +44,12 @@
     <main class="main-content">
       <header class="topbar">
         <span class="breadcrumb">Biblioteca <span>/</span> Colección</span>
-        <span class="database-badge"><span class="status-dot"></span> <span id="database-label">PostgreSQL · LIBRERIA</span></span>
+        <div class="topbar-actions">
+          <span class="database-badge"><span class="status-dot"></span> <span id="database-label">PostgreSQL · LIBRERIA</span></span>
+          <span id="signed-in-user" hidden></span>
+          <button class="button button-secondary" id="login-button" type="button">Iniciar sesión</button>
+          <button class="button button-secondary" id="logout-button" type="button" hidden>Cerrar sesión</button>
+        </div>
       </header>
 
         <!-- Catálogo, resumen, búsqueda y documentación interactiva de la API. -->
@@ -234,6 +239,26 @@
       <div class="dialog-actions">
         <button class="button button-secondary" id="cancel-record-dialog" type="button">Cancelar</button>
         <button class="button button-primary" id="save-record" type="submit">Guardar</button>
+      </div>
+    </form>
+  </dialog>
+  <dialog class="book-dialog" id="login-dialog" aria-labelledby="login-title">
+    <form id="login-form">
+      <div class="dialog-heading">
+        <div>
+          <p class="eyebrow">ACCESO SEGURO</p>
+          <h2 id="login-title">Iniciar sesión</h2>
+        </div>
+        <button class="icon-button" id="close-login-dialog" type="button" aria-label="Cerrar">×</button>
+      </div>
+      <label for="login-email">Correo electrónico</label>
+      <input id="login-email" name="username" type="email" required autocomplete="username">
+      <label for="login-password">Contraseña</label>
+      <input id="login-password" name="password" type="password" required autocomplete="current-password">
+      <p class="form-error" id="login-error" role="alert" hidden></p>
+      <div class="dialog-actions">
+        <button class="button button-secondary" id="cancel-login" type="button">Cancelar</button>
+        <button class="button button-primary" id="submit-login" type="submit">Entrar</button>
       </div>
     </form>
   </dialog>
