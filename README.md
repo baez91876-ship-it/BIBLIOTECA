@@ -9,7 +9,6 @@ Taller 1 en rutas legacy solo para desarrollo.
 - Python 3.13 o superior
 - Node.js y npm
 - PostgreSQL y una base de datos `libreria`
-- Docker Desktop (opcional)
 
 ## Instalación local
 
@@ -92,14 +91,17 @@ con la URL que aparece en el Dashboard y sube ese cambio. GitHub Pages volverá 
 publicar la interfaz automáticamente desde `main` / `/docs`.
 
 Si los logs de Render muestran `ValidationError` para `Settings` y el campo
-`database_url` como obligatorio, el servicio no recibió `DATABASE_URL`. Crea o
-sincroniza los recursos desde **New → Blueprint** usando este repositorio y la
-rama que contiene `render.yaml`; el Blueprint conecta automáticamente
-`DATABASE_URL` con la cadena de conexión de `biblioteca-postgres`. Si el servicio
-web se creó manualmente, agrega `DATABASE_URL` en **Environment** usando la URL
-interna de esa base y confirma que su nombre de base sea `libreria`. No guardes
-esa URL ni sus credenciales en Git. Después de corregir el entorno, vuelve a
-desplegar y verifica `/api/v1/health`.
+`database_url` como obligatorio, Render no entregó la variable requerida y la
+API no puede iniciar sin una base de datos configurada. Crea o sincroniza los
+recursos desde **New → Blueprint** usando este repositorio y la rama que
+contiene `render.yaml`; el Blueprint conecta `DATABASE_URL` con la cadena de
+conexión de `biblioteca-postgres`. Si el servicio web se creó manualmente,
+abre **Environment**, agrega exactamente la variable `DATABASE_URL` con la URL
+interna de PostgreSQL y confirma que la base se llame `libreria`. El archivo
+`render.yaml` no agrega variables a un servicio independiente hasta que sus
+recursos se administren con el Blueprint. No guardes la URL ni sus credenciales
+en Git. Guarda los cambios, vuelve a desplegar y verifica
+`/api/v1/health`.
 
 Después del primer despliegue, crea el primer administrador desde la consola
 del servicio con `python -m app.scripts.crear_admin`. El comando solicita correo,
@@ -123,37 +125,6 @@ bloqueo, rotación y reuso de refresh tokens, RBAC, propiedad, rate limiting,
 paginación y request ID. Usa SQLite en memoria para no modificar PostgreSQL; la
 cobertura comprobada supera el 70%.
 
-## Docker Compose
-
-Los archivos de Docker están agrupados en `docker/`. Crea la configuración local:
-
-```powershell
-Copy-Item docker\.env.docker.example docker\.env.docker
-```
-
-Cambia `POSTGRES_PASSWORD`, la contraseña en `DATABASE_URL` y `JWT_SECRET_KEY`
-dentro de `docker\.env.docker`. Luego ejecuta desde la raíz del proyecto:
-
-```powershell
-docker compose -f docker\docker-compose.yml up --build -d
-docker compose -f docker\docker-compose.yml ps
-```
-
-Compose espera a que PostgreSQL esté listo, aplica las migraciones y después
-inicia la API. La interfaz estará en <http://127.0.0.1:8001/> y Swagger en
-<http://127.0.0.1:8001/docs>. El PostgreSQL de Docker escucha solo en
-`localhost:5433`, independiente de cualquier PostgreSQL local en `5432`.
-Docker conserva los datos en el volumen `libreria_libreria_data`.
-
-```powershell
-docker compose -f docker\docker-compose.yml logs -f api
-docker compose -f docker\docker-compose.yml down
-```
-
-`docker compose -f docker\docker-compose.yml down -v` borra de forma permanente
-la base de Docker y su volumen. `.env`, `docker\.env.docker`, `.venv` y los
-cachés se excluyen de Git. No guardes credenciales reales en los ejemplos.
-
 ## Estructura
 
 ```text
@@ -173,7 +144,6 @@ cachés se excluyen de Git. No guardes credenciales reales en los ejemplos.
 │   ├── api-config.js  # Configuración de la API para la interfaz
 │   ├── catalogo.json  # Catálogo estático de respaldo
 │   └── index.html     # Página principal
-├── docker/           # Dockerfile, Compose y ejemplo de entorno
 ├── scripts/
 │   └── dev.js        # Lanzador npm para Uvicorn
 ├── .env.example      # Plantilla de configuración local
@@ -190,7 +160,7 @@ cachés se excluyen de Git. No guardes credenciales reales en los ejemplos.
 
 En la interfaz local, expande **Documentación interactiva de la API** bajo la
 colección para abrir Swagger completo sin salir de la página. También puedes
-visitar <http://127.0.0.1:8001/docs> en Docker.
+visitar <http://127.0.0.1:8000/docs>.
 
 Todos los listados usan `skip` (mínimo 0) y `limit` (1–100). El reporte de
 libros más prestados conserva `limite` como alias obsoleto; usa `limit` para

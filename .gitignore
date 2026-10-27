@@ -3,7 +3,6 @@ __pycache__/
 *.py[cod]
 libreria.db
 .env
-docker/.env.docker
 .pytest_cache/
 .coverage
 htmlcov/
