@@ -7,7 +7,7 @@ from html.parser import HTMLParser
 from importlib import import_module, util
 
 from fastapi.testclient import TestClient
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, event
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
@@ -279,13 +279,17 @@ class BibliotecaApiTests(unittest.TestCase):
         self.assertEqual(fine_report[0]["nombre"], "Luis Pérez")
         self.assertEqual(fine_report[0]["total_multas"], 6.5)
         # 23. Top borrowed books are ordered by loan count.
-        top_books = self.client.get("/reportes/libros-mas-prestados?limite=3").json()
+        top_books = self.client.get("/reportes/libros-mas-prestados?limit=3").json()
         self.assertLessEqual(len(top_books), 3)
         self.assertEqual(
             [row["total_prestamos"] for row in top_books],
             sorted(
                 (row["total_prestamos"] for row in top_books), reverse=True
             ),
+        )
+        self.assertEqual(
+            self.client.get("/reportes/libros-mas-prestados?limite=3").json(),
+            top_books,
         )
         # 24. Pagination returns distinct book pages.
         first_page = self.client.get("/libros?skip=0&limit=2").json()
@@ -304,6 +308,54 @@ class BibliotecaApiTests(unittest.TestCase):
         self.assertEqual(self.client.get("/libros?skip=-1").status_code, 422)
         self.assertEqual(self.client.get("/libros?limit=0").status_code, 422)
         self.assertEqual(self.client.get("/libros?limit=101").status_code, 422)
+        self.assertEqual(
+            self.client.get("/reportes/libros-mas-prestados?limit=101").status_code,
+            422,
+        )
+
+    def test_recursos_inexistentes_responden_404_json(self):
+        """Los endpoints de detalle y sus relaciones informan los recursos ausentes."""
+        expected_details = {
+            "/autores/999": "Autor no encontrado",
+            "/autores/999/libros": "Autor no encontrado",
+            "/categorias/999": "Categoría no encontrada",
+            "/libros/999": "Libro no encontrado",
+            "/socios/999": "Socio no encontrado",
+            "/socios/999/prestamos": "Socio no encontrado",
+            "/prestamos/999": "Préstamo no encontrado",
+        }
+        for path, detail in expected_details.items():
+            with self.subTest(path=path):
+                response = self.client.get(path)
+                self.assertEqual(response.status_code, 404)
+                self.assertEqual(response.json(), {"detail": detail})
+
+    def test_cada_reporte_ejecuta_una_consulta_sql(self):
+        """Comprueba que cada endpoint de reporte ejecuta una sola sentencia."""
+        statements = []
+
+        def capture_statement(
+            connection, cursor, statement, parameters, context, executemany
+        ):
+            statements.append(statement)
+
+        event.listen(self.engine, "before_cursor_execute", capture_statement)
+        try:
+            for path in (
+                "/reportes/libros-mas-prestados",
+                "/reportes/categorias",
+                "/reportes/prestamos-vencidos",
+                "/reportes/socios-con-multas",
+                "/reportes/autores",
+                "/reportes/resumen",
+            ):
+                with self.subTest(path=path):
+                    statements.clear()
+                    response = self.client.get(path)
+                    self.assertEqual(response.status_code, 200)
+                    self.assertEqual(len(statements), 1)
+        finally:
+            event.remove(self.engine, "before_cursor_execute", capture_statement)
 
     def test_interfaz_y_activos_en_rutas_de_pages(self):
         """Verifica la interfaz, Swagger y los recursos estáticos publicados."""

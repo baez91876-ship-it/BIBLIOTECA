@@ -6,6 +6,7 @@ from fastapi import APIRouter, Query
 
 from ..controllers import reports
 from ..core.dependencies import PaginationDep, SessionDep
+from ..core.exceptions import ReglaNegocio
 from ..schemas.reporte import (
     AutorReporte,
     CategoriaReporte,
@@ -17,16 +18,24 @@ from ..schemas.reporte import (
 
 router = APIRouter(prefix="/reportes", tags=["reportes"])
 LimiteReporte = Annotated[int, Query(ge=1, le=100)]
+LimiteReporteAnterior = Annotated[
+    int | None, Query(ge=1, le=100, alias="limite", deprecated=True)
+]
 
 
 @router.get("/libros-mas-prestados", response_model=list[LibroMasPrestado])
 def libros_mas_prestados(
     db: SessionDep,
-    limite: LimiteReporte = 5,
+    limit: LimiteReporte = 5,
     skip: Annotated[int, Query(ge=0)] = 0,
+    limite_anterior: LimiteReporteAnterior = None,
 ) -> list[dict]:
     """Devuelve los libros más prestados con límite y desplazamiento."""
-    return reports.most_borrowed_books(db, skip, limite)
+    if limite_anterior is not None:
+        if limit != 5 and limit != limite_anterior:
+            raise ReglaNegocio("No combines los parámetros 'limit' y 'limite'")
+        limit = limite_anterior
+    return reports.most_borrowed_books(db, skip, limit)
 
 
 @router.get("/categorias", response_model=list[CategoriaReporte])

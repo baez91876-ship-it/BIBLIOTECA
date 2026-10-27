@@ -130,8 +130,9 @@ En la interfaz local, expande **Documentación interactiva de la API** bajo la
 colección para abrir Swagger completo sin salir de la página. También puedes
 visitar <http://127.0.0.1:8001/docs> en Docker.
 
-Todos los listados usan `skip` (mínimo 0) y `limit` (1–100), salvo que se
-indique `limite` en un reporte.
+Todos los listados usan `skip` (mínimo 0) y `limit` (1–100). El reporte de
+libros más prestados conserva `limite` como alias obsoleto; usa `limit` para
+nuevas integraciones.
 
 | Recurso | Endpoints |
 |---|---|
