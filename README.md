@@ -73,45 +73,62 @@ La URL de la API para GitHub Pages se configura en
 [`docs/api-config.js`](./docs/api-config.js). Pages no conserva credenciales;
 para operaciones de administración inicia sesión en la interfaz desplegada.
 
-## Desplegar FastAPI en Vercel
+## Desplegar en FastAPI Cloud
 
-El proyecto configura el punto de entrada de FastAPI en [`pyproject.toml`](./pyproject.toml)
-y la versión de Python en [`.python-version`](./.python-version). Importa este
-repositorio en Vercel desde **Add New → Project**; deja **Root Directory** en la
-raíz del repositorio y usa la detección automática de FastAPI. Vercel sirve la
-API en rutas como `/api/v1/health` y `/docs`.
+FastAPI Cloud despliega aplicaciones FastAPI con el comando `fastapi deploy`.
+La dependencia `fastapi[standard]` de `requirements.txt` ya incluye el CLI.
+El punto de entrada está configurado en [`pyproject.toml`](./pyproject.toml) y
+Python 3.13 en [`.python-version`](./.python-version). Instala los requisitos en
+Windows y ejecuta el comando desde la raíz:
 
-Antes del despliegue, configura estas variables en **Settings → Environment
-Variables** para Production (y también Preview, si usarás previews):
+```powershell
+$env:PYTHONUTF8 = "1"
+python -m venv .venv
+.venv\Scripts\python.exe -m pip install -r requirements.txt
+.venv\Scripts\fastapi.exe deploy
+```
 
-- `DATABASE_URL`: URL de una base PostgreSQL externa (por ejemplo, Neon o
-  Supabase). La base debe llamarse exactamente `libreria`; Vercel no proporciona
-  una base PostgreSQL integrada.
-- `JWT_SECRET_KEY`: secreto aleatorio de al menos 32 caracteres.
+Inicia sesión o crea una cuenta cuando el CLI abra el navegador y sigue las
+indicaciones para crear la aplicación. El primer despliegue crea el vínculo
+local `.fastapicloud`. Si la aplicación informa que faltan variables al iniciar,
+configúralas para esa aplicación antes de desplegar de nuevo. Puedes hacerlo
+desde **App Details → Environment Variables** en el Dashboard o con el CLI:
+
+```powershell
+.venv\Scripts\fastapi.exe cloud env set --secret --no-redeploy DATABASE_URL
+.venv\Scripts\fastapi.exe cloud env set --secret --no-redeploy JWT_SECRET_KEY
+.venv\Scripts\fastapi.exe cloud env set --no-redeploy APP_ENV production
+.venv\Scripts\fastapi.exe cloud env set --no-redeploy CORS_ALLOWED_ORIGINS https://baez91876-ship-it.github.io
+```
+
+El CLI solicita los valores secretos sin mostrarlos. Configura estas variables:
+
+- `DATABASE_URL`: URL de PostgreSQL, con nombre de base `libreria`. FastAPI
+  Cloud ofrece integraciones con Neon y Supabase; confirma que la conexión
+  seleccionada use esa base.
+- `JWT_SECRET_KEY`: clave aleatoria de al menos 32 caracteres.
 - `APP_ENV`: `production`.
 - `CORS_ALLOWED_ORIGINS`: `https://baez91876-ship-it.github.io`.
 
-No subas la URL de la base ni secretos a Git. Antes del primer uso, aplica las
-migraciones con la misma base configurada para producción. Copia
-`DATABASE_URL` desde Vercel a tu `.env` local ignorado por Git (haz una copia
-del `.env` existente antes de reemplazarlo) y ejecuta:
+FastAPI Cloud aplica los cambios de variables en el siguiente despliegue. Antes
+de desplegar de nuevo, aplica las migraciones a esa misma base. Copia la URL
+`DATABASE_URL` en tu `.env` local ignorado por Git (sin reemplazar otros valores
+locales) y ejecuta:
 
 ```powershell
-npx vercel link
 .venv\Scripts\python.exe -m app.scripts.migrate
 .venv\Scripts\python.exe -m app.scripts.crear_admin
+.venv\Scripts\fastapi.exe deploy
 ```
 
 El comando de alta solicita correo, nombre y contraseña sin mostrarla. No existe
 una contraseña inicial ni una ruta pública para asignar roles privilegiados.
-Después del despliegue, comprueba `/api/v1/health` y `/docs` en el dominio que
-Vercel asignó al proyecto.
-
-Para habilitar el inicio de sesión desde GitHub Pages, actualiza
-`window.BIBLIOTECA_API_URL` en [`docs/api-config.js`](./docs/api-config.js) con
-ese dominio HTTPS de Vercel y sube el cambio. GitHub Pages volverá a publicar la
-interfaz. Si el dominio de Vercel cambia, actualiza también
-`CORS_ALLOWED_ORIGINS` en Vercel y despliega de nuevo.
+Después del despliegue, comprueba `/api/v1/health` y `/docs` en el dominio
+`.fastapicloud.dev` asignado a la aplicación. Para habilitar el inicio de sesión
+desde GitHub Pages, actualiza `window.BIBLIOTECA_API_URL` en
+[`docs/api-config.js`](./docs/api-config.js) con ese dominio HTTPS y sube el
+cambio. Si cambia el dominio, actualiza también `CORS_ALLOWED_ORIGINS` y vuelve
+a desplegar.
 
 ## Pruebas
 
@@ -147,9 +164,8 @@ cobertura comprobada supera el 70%.
 ├── scripts/
 │   └── dev.js        # Lanzador npm para Uvicorn
 ├── .env.example      # Plantilla de configuración local
-├── .python-version   # Python 3.13 en Vercel
-├── pyproject.toml    # Punto de entrada FastAPI para Vercel
-├── vercel.json        # Incluye los recursos de la interfaz en la función
+├── .python-version   # Python 3.13 en FastAPI Cloud
+├── pyproject.toml    # Dependencias y punto de entrada FastAPI Cloud
 ├── package.json      # Comandos npm (sin dependencias Node)
 ├── requirements.txt  # Dependencias de ejecución Python
 ├── requirements-dev.txt

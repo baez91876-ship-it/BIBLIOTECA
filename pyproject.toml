@@ -1,2 +1,22 @@
-[tool.vercel]
+[project]
+name = "biblioteca-api"
+version = "2.0.0"
+description = "API FastAPI para gestionar una biblioteca"
+requires-python = ">=3.13,<3.14"
+dependencies = [
+    "fastapi[standard]==0.143.0",
+    "uvicorn==0.54.0",
+    "pydantic==2.14.1",
+    "pydantic-settings>=2.8,<3",
+    "email-validator==2.3.0",
+    "alembic>=1.15,<2",
+    "PyJWT>=2.10,<3",
+    "pwdlib[argon2]>=0.2,<1",
+    "slowapi>=0.1.9,<1",
+    "SQLAlchemy==2.1.4",
+    "psycopg[binary]==3.3.6",
+    "python-dotenv==1.2.4",
+]
+
+[tool.fastapi]
 entrypoint = "app.main:app"

@@ -3,6 +3,7 @@ __pycache__/
 *.py[cod]
 libreria.db
 .env
+.fastapicloud/
 .pytest_cache/
 .coverage
 htmlcov/

@@ -607,7 +607,7 @@ class BibliotecaApiTests(unittest.TestCase):
             encoding="utf-8"
         )
         self.assertIn('window.BIBLIOTECA_API_URL = "";', api_config)
-        self.assertIn("Vercel", api_config)
+        self.assertIn("FastAPI Cloud", api_config)
         self.assertNotIn("onrender.com", api_config)
         catalog = self.client.get("/catalogo.json")
         self.assertEqual(catalog.status_code, 200)
