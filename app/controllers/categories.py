@@ -6,17 +6,23 @@ from sqlalchemy.orm import Session
 
 from ..core.dependencies import Pagination
 from ..core.exceptions import Conflicto, NoEncontrado
+from ..core.pagination import execute_page
 from ..models import Categoria
 from ..schemas.categoria import CategoriaCreate, CategoriaPatch
 
 
-def list_categories(db: Session, pagination: Pagination) -> list[Categoria]:
+def list_categories(
+    db: Session, pagination: Pagination, include_total: bool = False
+) -> list[Categoria] | tuple[list[Categoria], int]:
     """Lista categorías con orden estable y paginación."""
-    return db.scalars(
+    query = (
         select(Categoria)
         .order_by(Categoria.nombre, Categoria.id)
-        .offset(pagination.skip)
-        .limit(pagination.limit)
+    )
+    if include_total:
+        return execute_page(db, query, pagination)
+    return db.scalars(
+        query.offset(pagination.skip).limit(pagination.limit)
     ).all()
 
 

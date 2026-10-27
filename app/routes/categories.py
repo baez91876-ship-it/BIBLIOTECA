@@ -2,20 +2,28 @@
 
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Response, status
+from fastapi import APIRouter, Depends, Request, Response, status
 
 from ..controllers import categories
 from ..core.dependencies import Pagination, SessionDep, get_pagination
 from ..models import Categoria
 from ..schemas.categoria import CategoriaCreate, CategoriaPatch, CategoriaRead
+from ..schemas.pagination import Pagina, crear_pagina
 
 router = APIRouter(prefix="/categorias", tags=["categorias"])
 PaginationQuery = Annotated[Pagination, Depends(get_pagination)]
 
 
-@router.get("", response_model=list[CategoriaRead])
-def listar_categorias(db: SessionDep, pagination: PaginationQuery) -> list[Categoria]:
+@router.get("", response_model=list[CategoriaRead] | Pagina[CategoriaRead])
+def listar_categorias(
+    request: Request,
+    db: SessionDep,
+    pagination: PaginationQuery,
+) -> list[Categoria] | Pagina[CategoriaRead]:
     """Devuelve la página solicitada de categorías."""
+    if request.url.path.startswith("/api/v1/"):
+        items, total = categories.list_categories(db, pagination, include_total=True)
+        return crear_pagina(items, total, pagination.skip, pagination.limit)
     return categories.list_categories(db, pagination)
 
 

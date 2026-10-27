@@ -1,17 +1,19 @@
 """Endpoints HTTP para consultar y administrar el catálogo de libros."""
 
-from fastapi import APIRouter, Query, Response, status
+from fastapi import APIRouter, Query, Request, Response, status
 
 from ..controllers import books
 from ..core.dependencies import PaginationDep, SessionDep
 from ..models import Libro
 from ..schemas.libro import LibroCreate, LibroPatch, LibroRead
+from ..schemas.pagination import Pagina, crear_pagina
 
 router = APIRouter(prefix="/libros", tags=["libros"])
 
 
-@router.get("", response_model=list[LibroRead])
+@router.get("", response_model=list[LibroRead] | Pagina[LibroRead])
 def listar_libros(
+    request: Request,
     db: SessionDep,
     pagination: PaginationDep,
     buscar: str | None = None,
@@ -20,8 +22,14 @@ def listar_libros(
     desde: int | None = Query(default=None, ge=1450),
     hasta: int | None = Query(default=None, ge=1450),
     orden: books.OrdenLibro = books.OrdenLibro.titulo,
-) -> list[Libro]:
+) -> list[Libro] | Pagina[LibroRead]:
     """Lista libros con filtros combinables y orden configurable."""
+    if request.url.path.startswith("/api/v1/"):
+        items, total = books.list_books(
+            db, pagination, buscar, autor, categoria_id, desde, hasta, orden,
+            include_total=True,
+        )
+        return crear_pagina(items, total, pagination.skip, pagination.limit)
     return books.list_books(
         db, pagination, buscar, autor, categoria_id, desde, hasta, orden
     )

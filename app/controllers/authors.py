@@ -5,17 +5,23 @@ from sqlalchemy.orm import Session, selectinload
 
 from ..core.dependencies import Pagination
 from ..core.exceptions import Conflicto, NoEncontrado
+from ..core.pagination import execute_page
 from ..models import Autor, Libro
 from ..schemas.autor import AutorCreate, AutorPatch
 
 
 def list_authors(
-    db: Session, pagination: Pagination, nacionalidad: str | None = None
-) -> list[Autor]:
+    db: Session,
+    pagination: Pagination,
+    nacionalidad: str | None = None,
+    include_total: bool = False,
+) -> list[Autor] | tuple[list[Autor], int]:
     """Lista autores en orden estable y filtra opcionalmente por nacionalidad."""
     query = select(Autor).order_by(Autor.nombre, Autor.id)
     if nacionalidad:
         query = query.where(Autor.nacionalidad.ilike(f"%{nacionalidad.strip()}%"))
+    if include_total:
+        return execute_page(db, query, pagination)
     return db.scalars(query.offset(pagination.skip).limit(pagination.limit)).all()
 
 
@@ -27,10 +33,15 @@ def get_author(author_id: int, db: Session) -> Autor:
     return author
 
 
-def list_author_books(author_id: int, db: Session, pagination: Pagination):
+def list_author_books(
+    author_id: int,
+    db: Session,
+    pagination: Pagination,
+    include_total: bool = False,
+) -> list[Libro] | tuple[list[Libro], int]:
     """Lista los libros de un autor después de validar que exista."""
     get_author(author_id, db)
-    return db.scalars(
+    query = (
         select(Libro)
         .where(Libro.autor_id == author_id)
         .options(
@@ -41,7 +52,10 @@ def list_author_books(author_id: int, db: Session, pagination: Pagination):
         .order_by(Libro.titulo, Libro.id)
         .offset(pagination.skip)
         .limit(pagination.limit)
-    ).all()
+    )
+    if include_total:
+        return execute_page(db, query, pagination)
+    return db.scalars(query).all()
 
 
 def create_author(data: AutorCreate, db: Session) -> Autor:

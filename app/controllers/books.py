@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session, selectinload
 
 from ..core.dependencies import Pagination
 from ..core.exceptions import Conflicto, NoEncontrado, ReglaNegocio
+from ..core.pagination import execute_page
 from ..models import Autor, Categoria, Libro, Prestamo
 from ..schemas.libro import LibroCreate, LibroPatch
 
@@ -38,7 +39,8 @@ def list_books(
     desde: int | None = None,
     hasta: int | None = None,
     orden: OrdenLibro = OrdenLibro.titulo,
-) -> list[Libro]:
+    include_total: bool = False,
+) -> list[Libro] | tuple[list[Libro], int]:
     """Combina filtros del catálogo y devuelve una página ordenada."""
     if desde is not None and hasta is not None and desde > hasta:
         raise ReglaNegocio("'desde' no puede ser mayor que 'hasta'")
@@ -60,6 +62,8 @@ def list_books(
         query = query.order_by(Libro.anio_publicacion.desc(), Libro.id)
     else:
         query = query.order_by(Libro.titulo, Libro.id)
+    if include_total:
+        return execute_page(db, query, pagination)
     return (
         db.scalars(query.offset(pagination.skip).limit(pagination.limit)).unique().all()
     )

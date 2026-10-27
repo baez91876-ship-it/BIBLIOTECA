@@ -1,13 +1,14 @@
 # API de biblioteca
 
-API REST con FastAPI, SQLAlchemy y PostgreSQL para administrar autores,
-categorías, libros, socios, préstamos y reportes.
+API REST de biblioteca con FastAPI, SQLAlchemy, PostgreSQL, Alembic y JWT.
+La rama `version-2` incorpora autenticación y permisos; conserva la API del
+Taller 1 en rutas legacy solo para desarrollo.
 
 ## Requisitos
 
 - Python 3.13 o superior
 - Node.js y npm
-- PostgreSQL y una base de datos `LIBRERIA`
+- PostgreSQL y una base de datos `libreria`
 - Docker Desktop (opcional)
 
 ## Instalación local
@@ -18,24 +19,41 @@ python -m venv .venv
 Copy-Item .env.example .env
 ```
 
-Edita `.env` con la URL PostgreSQL de la base `LIBRERIA`. La aplicación verifica
+Edita `.env` con la URL PostgreSQL de la base `libreria`. La aplicación verifica
 el nombre de la base y no permite conectarse a otro motor o base de datos.
-Usa una base vacía con permisos para crear las tablas. Las tablas antiguas no
-se migran ni se eliminan automáticamente.
+`JWT_SECRET_KEY` debe contener al menos 32 caracteres aleatorios; el valor de
+ejemplo solo es válido para desarrollo. Las tablas se crean y actualizan con
+migraciones versionadas, nunca con `create_all`.
 
-Inicia la aplicación desde la raíz:
+Para una base nueva, inicia desde la raíz:
 
 ```powershell
 npm run dev
 ```
 
-El comando usa automáticamente el Python de `.venv` si existe; de lo contrario,
-usa Python del `PATH`. No requiere `npm install`.
+El comando ejecuta `python -m app.scripts.migrate` antes de iniciar Uvicorn y usa
+automáticamente el Python de `.venv` si existe; de lo contrario, usa Python del
+`PATH`. No requiere `npm install`.
+
+Si conectarás una base existente del Taller 1 que todavía no tiene historial
+Alembic, el lanzador reconoce el esquema completo y marca el baseline sin
+modificar sus datos. Si prefieres hacerlo manualmente, marca la revisión
+correspondiente antes de iniciar:
+
+```powershell
+.venv\Scripts\python.exe -m alembic stamp 0001_estado_inicial
+.venv\Scripts\python.exe -m alembic upgrade head
+```
+
+`npm run dev` requiere una base creada y accesible en PostgreSQL. Las migraciones
+no borran ni recrean los datos de las tablas existentes.
 
 La interfaz está en <http://127.0.0.1:8000/>, Swagger en
 <http://127.0.0.1:8000/docs> y ReDoc en <http://127.0.0.1:8000/redoc>.
-La interfaz local permite administrar libros, autores, categorías, socios y
-préstamos; los préstamos devueltos conservan su historial.
+La interfaz pública permite consultar el catálogo. Inicia sesión con un usuario
+bibliotecario o administrador para gestionar el catálogo y las operaciones
+internas. El acceso dura 15 minutos y la interfaz rota el refresh token; al
+cerrar sesión revoca ese token.
 
 ## Preparar GitHub Pages
 
@@ -49,15 +67,16 @@ La página publicada está en
 <https://baez91876-ship-it.github.io/BIBLIOTECA/>. El repositorio se llama
 `BIBLIOTECA`; la URL anterior con `BIBBLIOTECA` ya no es válida.
 
-La URL de la API y el origen CORS se configuran para Render en `docs/api-config.js`
-y `render.yaml`. Sin un backend público disponible, Pages no puede crear ni
-modificar registros; para actualizar su copia de solo lectura, exporta el
-catálogo desde la API local y sube `docs/catalogo.json`.
+La URL de la API y el origen CORS se configuran para Render en
+[`docs/api-config.js`](./docs/api-config.js) y [`render.yaml`](./render.yaml).
+Pages no conserva credenciales; para operaciones de administración inicia sesión
+en la interfaz desplegada.
 
 ## Desplegar API y habilitar altas en GitHub Pages
 
 GitHub Pages solo publica la interfaz. El archivo `render.yaml` prepara la API
-FastAPI y una base PostgreSQL gratuita en Render. Para desplegarlos, abre el
+FastAPI y una base PostgreSQL gratuita en Render. El despliegue aplica Alembic
+antes de arrancar la API y genera una clave JWT de producción. Para desplegarlos, abre el
 Dashboard de Render, selecciona **New → Blueprint**, conecta este repositorio y
 confirma la creación de los recursos definidos por el Blueprint.
 
@@ -68,6 +87,11 @@ URL al servicio, actualiza `window.BIBLIOTECA_API_URL` en `docs/api-config.js`
 con la URL que aparece en el Dashboard y sube ese cambio. GitHub Pages volverá a
 publicar la interfaz automáticamente desde `main` / `/docs`.
 
+Después del primer despliegue, crea el primer administrador desde la consola
+del servicio con `python -m app.scripts.crear_admin`. El comando solicita correo,
+nombre y contraseña sin mostrarla en pantalla; no existe una contraseña inicial
+ni una ruta pública para asignar roles privilegiados.
+
 El plan gratuito puede tardar alrededor de un minuto en despertar tras estar
 inactivo, y su base PostgreSQL caduca a los 30 días. No uses ese plan para datos
 que necesites conservar; antes de la caducidad, actualiza a una base de pago y
@@ -77,12 +101,13 @@ verifica la migración de los datos.
 
 ```powershell
 .venv\Scripts\python.exe -m pip install -r requirements-dev.txt
-.venv\Scripts\python.exe -m unittest -v
+.venv\Scripts\python.exe -m pytest --cov=app --cov-report=term-missing
 ```
 
-La suite incluye los 24 casos de aceptación del taller, paginación y otras
-validaciones de la API. Usa SQLite en memoria para que las pruebas no modifiquen
-la base PostgreSQL.
+La suite incluye los 24 casos de aceptación del Taller 1, autenticación,
+bloqueo, rotación y reuso de refresh tokens, RBAC, propiedad, rate limiting,
+paginación y request ID. Usa SQLite en memoria para no modificar PostgreSQL; la
+cobertura comprobada supera el 70%.
 
 ## Docker Compose
 
@@ -92,15 +117,16 @@ Los archivos de Docker están agrupados en `docker/`. Crea la configuración loc
 Copy-Item docker\.env.docker.example docker\.env.docker
 ```
 
-Cambia `POSTGRES_PASSWORD` y la contraseña en `DATABASE_URL` dentro de
-`docker\.env.docker`. Luego ejecuta desde la raíz del proyecto:
+Cambia `POSTGRES_PASSWORD`, la contraseña en `DATABASE_URL` y `JWT_SECRET_KEY`
+dentro de `docker\.env.docker`. Luego ejecuta desde la raíz del proyecto:
 
 ```powershell
 docker compose -f docker\docker-compose.yml up --build -d
 docker compose -f docker\docker-compose.yml ps
 ```
 
-La interfaz estará en <http://127.0.0.1:8001/> y Swagger en
+Compose espera a que PostgreSQL esté listo, aplica las migraciones y después
+inicia la API. La interfaz estará en <http://127.0.0.1:8001/> y Swagger en
 <http://127.0.0.1:8001/docs>. El PostgreSQL de Docker escucha solo en
 `localhost:5433`, independiente de cualquier PostgreSQL local en `5432`.
 Docker conserva los datos en el volumen `libreria_libreria_data`.
@@ -124,7 +150,10 @@ cachés se excluyen de Git. No guardes credenciales reales en los ejemplos.
 │   ├── models/       # Modelos y relaciones SQLAlchemy
 │   ├── routes/       # Endpoints FastAPI
 │   ├── schemas/      # Validación y respuestas Pydantic
+│   ├── scripts/      # Migración de arranque y alta inicial de admin
 │   └── main.py       # Aplicación, routers y recursos web
+├── alembic/
+│   └── versions/     # Estado inicial, multa_pagada y tablas de identidad
 ├── docs/             # GitHub Pages: interfaz y catálogo estático
 │   ├── static/       # JavaScript y estilos
 │   ├── api-config.js  # Configuración de la API para la interfaz
@@ -139,6 +168,7 @@ cachés se excluyen de Git. No guardes credenciales reales en los ejemplos.
 ├── requirements-dev.txt
 │                     # Dependencias para pruebas
 ├── test_main.py      # Pruebas API, interfaz y reglas de aceptación
+├── test_auth.py      # Pruebas de autenticación y permisos V2
 └── README.md
 ```
 
@@ -154,14 +184,25 @@ nuevas integraciones.
 
 | Recurso | Endpoints |
 |---|---|
-| Autores | `GET/POST /autores`, `GET/PATCH/DELETE /autores/{id}`, `GET /autores/{id}/libros` |
-| Categorías | `GET/POST /categorias`, `GET/PATCH/DELETE /categorias/{id}` |
-| Libros | `GET/POST /libros`, `GET/PATCH/DELETE /libros/{id}` |
-| Socios | `GET/POST /socios`, `GET/PATCH/DELETE /socios/{id}`, `GET /socios/{id}/prestamos` |
-| Préstamos | `GET/POST /prestamos`, `GET/PATCH/DELETE /prestamos/{id}`, `POST /prestamos/{id}/devolucion` |
-| Reportes | `GET /reportes/libros-mas-prestados`, `/categorias`, `/prestamos-vencidos`, `/socios-con-multas`, `/autores`, `/resumen` |
+| Autores | `GET/POST /api/v1/autores`, `GET/PATCH/DELETE /api/v1/autores/{id}`, `GET /api/v1/autores/{id}/libros` |
+| Categorías | `GET/POST /api/v1/categorias`, `GET/PATCH/DELETE /api/v1/categorias/{id}` |
+| Libros | `GET/POST /api/v1/libros`, `GET/PATCH/DELETE /api/v1/libros/{id}` |
+| Socios | `GET/POST /api/v1/socios`, `GET/PATCH/DELETE /api/v1/socios/{id}`, `GET /api/v1/socios/{id}/prestamos` |
+| Préstamos | `GET/POST /api/v1/prestamos`, `GET/PATCH/DELETE /api/v1/prestamos/{id}`, `POST /api/v1/prestamos/{id}/devolucion` |
+| Reportes | `GET /api/v1/reportes/libros-mas-prestados`, `/categorias`, `/prestamos-vencidos`, `/socios-con-multas`, `/autores`, `/resumen` |
 
-`GET /libros` acepta filtros combinables: `buscar`, `autor`, `categoria_id`,
+Autenticación: `POST /api/v1/auth/registro`, `POST /api/v1/auth/login`,
+`POST /api/v1/auth/refresh`, `POST /api/v1/auth/logout`,
+`POST /api/v1/auth/bibliotecarios` (solo administrador) y
+`GET /api/v1/auth/me`. Login usa OAuth2 form (`username` = correo). Los
+listados V2 responden `{ items, total, skip, limit }`; los reportes calculan el
+total dentro de la misma consulta SQL. `GET` de autores, categorías y libros es
+público; las escrituras y reportes requieren bibliotecario o administrador.
+Los socios solo ven sus propios datos y préstamos, y solo pueden solicitar
+préstamos para su cuenta. Las rutas legacy sin `/api/v1` solo están disponibles
+con `APP_ENV=development`.
+
+`GET /api/v1/libros` acepta filtros combinables: `buscar`, `autor`, `categoria_id`,
 `desde`, `hasta` y `orden=titulo|anio|-anio`. La respuesta de un libro incluye
 autor y categorías anidados, además de `disponibles`, calculado como ejemplares
 menos préstamos sin devolver.

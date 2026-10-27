@@ -2,25 +2,32 @@
 
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Response, status
+from fastapi import APIRouter, Depends, Request, Response, status
 
 from ..controllers import authors
 from ..core.dependencies import Pagination, SessionDep, get_pagination
 from ..models import Autor, Libro
 from ..schemas.autor import AutorCreate, AutorPatch, AutorRead
 from ..schemas.libro import LibroRead
+from ..schemas.pagination import Pagina, crear_pagina
 
 router = APIRouter(prefix="/autores", tags=["autores"])
 PaginationQuery = Annotated[Pagination, Depends(get_pagination)]
 
 
-@router.get("", response_model=list[AutorRead])
+@router.get("", response_model=list[AutorRead] | Pagina[AutorRead])
 def listar_autores(
+    request: Request,
     db: SessionDep,
     pagination: PaginationQuery,
     nacionalidad: str | None = None,
-) -> list[Autor]:
+) -> list[Autor] | Pagina[AutorRead]:
     """Devuelve autores paginados, con filtro opcional por nacionalidad."""
+    if request.url.path.startswith("/api/v1/"):
+        items, total = authors.list_authors(
+            db, pagination, nacionalidad, include_total=True
+        )
+        return crear_pagina(items, total, pagination.skip, pagination.limit)
     return authors.list_authors(db, pagination, nacionalidad)
 
 
@@ -30,11 +37,22 @@ def obtener_autor(autor_id: int, db: SessionDep) -> Autor:
     return authors.get_author(autor_id, db)
 
 
-@router.get("/{autor_id}/libros", response_model=list[LibroRead])
+@router.get(
+    "/{autor_id}/libros",
+    response_model=list[LibroRead] | Pagina[LibroRead],
+)
 def listar_libros_autor(
-    autor_id: int, db: SessionDep, pagination: PaginationQuery
-) -> list[Libro]:
+    autor_id: int,
+    request: Request,
+    db: SessionDep,
+    pagination: PaginationQuery,
+) -> list[Libro] | Pagina[LibroRead]:
     """Devuelve la página de libros asociada al autor."""
+    if request.url.path.startswith("/api/v1/"):
+        items, total = authors.list_author_books(
+            autor_id, db, pagination, include_total=True
+        )
+        return crear_pagina(items, total, pagination.skip, pagination.limit)
     return authors.list_author_books(autor_id, db, pagination)
 
 

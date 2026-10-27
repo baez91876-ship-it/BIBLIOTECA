@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session, joinedload
 
 from ..core.dependencies import Pagination
 from ..core.exceptions import Conflicto, NoEncontrado, ReglaNegocio
+from ..core.pagination import execute_page
 from ..models import Libro, Prestamo, Socio
 from ..schemas.prestamo import (
     DevolucionCreate,
@@ -34,7 +35,9 @@ def list_loans(
     estado: EstadoPrestamo | None = None,
     socio_id: int | None = None,
     libro_id: int | None = None,
-) -> list[Prestamo]:
+    owner_id: int | None = None,
+    include_total: bool = False,
+) -> list[Prestamo] | tuple[list[Prestamo], int]:
     """Lista préstamos filtrando por estado, socio o libro."""
     query = select(Prestamo).options(*_loan_options())
     if estado == EstadoPrestamo.devuelto:
@@ -51,23 +54,31 @@ def list_loans(
         )
     if socio_id is not None:
         query = query.where(Prestamo.socio_id == socio_id)
+    if owner_id is not None:
+        query = query.where(Prestamo.socio_id == owner_id)
     if libro_id is not None:
         query = query.where(Prestamo.libro_id == libro_id)
+    query = query.order_by(Prestamo.fecha_prestamo.desc(), Prestamo.id)
+    if include_total:
+        return execute_page(db, query, pagination)
     return (
         db.scalars(
-            query.order_by(Prestamo.fecha_prestamo.desc(), Prestamo.id)
-            .offset(pagination.skip)
-            .limit(pagination.limit)
+            query.offset(pagination.skip).limit(pagination.limit)
         )
         .unique()
         .all()
     )
 
 
-def get_loan(loan_id: int, db: Session) -> Prestamo:
+def get_loan(
+    loan_id: int, db: Session, owner_id: int | None = None
+) -> Prestamo:
     """Obtiene un préstamo con sus relaciones o informa que no existe."""
     loan = db.scalar(
-        select(Prestamo).where(Prestamo.id == loan_id).options(*_loan_options())
+        select(Prestamo)
+        .where(Prestamo.id == loan_id)
+        .where(Prestamo.socio_id == owner_id if owner_id is not None else True)
+        .options(*_loan_options())
     )
     if loan is None:
         raise NoEncontrado("Préstamo no encontrado")

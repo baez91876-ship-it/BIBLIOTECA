@@ -10,6 +10,7 @@ from ..core.database import Base
 
 if TYPE_CHECKING:
     from .prestamo import Prestamo
+    from .usuario import Usuario
 
 
 class Socio(Base):
@@ -29,3 +30,4 @@ class Socio(Base):
     )
 
     prestamos: Mapped[list["Prestamo"]] = relationship(back_populates="socio")
+    usuario: Mapped["Usuario | None"] = relationship(back_populates="socio", uselist=False)

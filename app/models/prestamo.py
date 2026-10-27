@@ -34,6 +34,9 @@ class Prestamo(Base):
     multa: Mapped[Decimal] = mapped_column(
         Numeric(10, 2), nullable=False, default=Decimal(0), server_default="0"
     )
+    multa_pagada: Mapped[bool] = mapped_column(
+        nullable=False, default=False, server_default="false"
+    )
 
     libro: Mapped["Libro"] = relationship(back_populates="prestamos")
     socio: Mapped["Socio"] = relationship(back_populates="prestamos")
