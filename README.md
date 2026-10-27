@@ -56,11 +56,11 @@ cerrar sesión revoca ese token.
 
 ## Preparar GitHub Pages
 
-La interfaz estática está organizada en `docs/` y puede publicarse desde
-`main` / `/docs` en **Settings → Pages → Build and deployment
-→ Deploy from a branch**. La API FastAPI y PostgreSQL no se ejecutan en Pages:
-primero hay que desplegar la API y su base de datos en un servicio que admita
-Python y PostgreSQL.
+La interfaz estática está organizada en `docs/` y se publica en cada cambio a
+`main` con [`.github/workflows/pages.yml`](./.github/workflows/pages.yml). En
+**Settings → Pages → Build and deployment**, selecciona **GitHub Actions** como
+fuente. La API FastAPI y PostgreSQL no se ejecutan en Pages: la API se despliega
+por separado en FastAPI Cloud.
 
 La página publicada está en
 <https://baez91876-ship-it.github.io/BIBLIOTECA/>. El repositorio se llama
