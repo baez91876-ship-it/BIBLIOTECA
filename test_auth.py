@@ -5,13 +5,16 @@ from datetime import UTC, date, datetime, timedelta
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine, event, func, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
 import app.controllers.auth as auth_controller
 import app.routes.auth as auth_router
 from app import main, models
-from app.core import database, security
+from app.controllers import members as members_controller
+from app.core import database, dependencies, security
+from app.schemas.socio import SocioPatch
 
 
 @pytest.fixture
@@ -488,6 +491,13 @@ def test_administrador_puede_completar_flujos_crud_versionados(api):
         "/api/v1/reportes/resumen",
     ):
         assert client.get(path, headers=headers).status_code == 200, path
+    assert (
+        client.get(
+            "/api/v1/reportes/libros-mas-prestados?limit=2&limite=3",
+            headers=headers,
+        ).status_code
+        == 422
+    )
 
     second_member = client.post(
         "/api/v1/socios",
@@ -561,4 +571,373 @@ def test_administrador_puede_completar_flujos_crud_versionados(api):
     assert (
         client.get(f"/api/v1/socios/{member['id']}", headers=headers).json()["activo"]
         is False
+    )
+
+
+def test_login_covers_unknown_inactive_expired_lock_and_successful_reset(api):
+    client, session_factory = api
+    assert (
+        client.post(
+            "/api/v1/auth/login",
+            data={"username": "missing@example.com", "password": "no-importa"},
+        ).status_code
+        == 401
+    )
+    assert register(client).status_code == 201
+    with session_factory() as db:
+        user = db.scalar(select(models.Usuario))
+        user.bloqueado_hasta = datetime.now(UTC) + timedelta(minutes=5)
+        with pytest.raises(auth_controller.CuentaBloqueada):
+            auth_controller.login("reader@example.com", "wrong", db)
+
+    with session_factory() as db:
+        user = db.scalar(select(models.Usuario))
+        user.intentos_fallidos = 4
+        user.bloqueado_hasta = datetime(2000, 1, 1)
+        db.commit()
+    with session_factory() as db, pytest.raises(auth_controller.CuentaBloqueada):
+        auth_controller.login("reader@example.com", "wrong", db)
+
+    with session_factory() as db:
+        user = db.scalar(select(models.Usuario))
+        user.intentos_fallidos = 4
+        user.bloqueado_hasta = datetime(2000, 1, 1)
+        db.commit()
+    success = login(client)
+    assert success.status_code == 200
+    with session_factory() as db:
+        user = db.scalar(select(models.Usuario))
+        assert user.intentos_fallidos == 0
+        assert user.bloqueado_hasta is None
+        user.activo = False
+        db.commit()
+    assert login(client).status_code == 401
+
+
+def test_refresh_unknown_expired_inactive_and_logout_are_handled(api):
+    client, session_factory = api
+    assert register(client).status_code == 201
+    refresh = login(client).json()["refresh_token"]
+
+    assert (
+        client.post(
+            "/api/v1/auth/refresh", json={"refresh_token": "unknown-token"}
+        ).status_code
+        == 401
+    )
+    unknown_signed_token, _, _ = security.create_token(
+        999,
+        "socio",
+        "refresh",
+        timedelta(days=1),
+        jti="unregistered-refresh-token",
+    )
+    assert (
+        client.post(
+            "/api/v1/auth/refresh",
+            json={"refresh_token": unknown_signed_token},
+        ).status_code
+        == 401
+    )
+    with session_factory() as db:
+        stored = db.scalar(select(models.RefreshToken))
+        stored.expira_en = datetime(2000, 1, 1)
+        db.commit()
+    assert (
+        client.post("/api/v1/auth/refresh", json={"refresh_token": refresh}).status_code
+        == 401
+    )
+
+    with session_factory() as db:
+        user = db.scalar(select(models.Usuario))
+        user.activo = False
+        db.scalar(select(models.RefreshToken)).expira_en = datetime(2999, 1, 1)
+        db.commit()
+    assert (
+        client.post("/api/v1/auth/refresh", json={"refresh_token": refresh}).status_code
+        == 401
+    )
+
+    assert (
+        client.post("/api/v1/auth/logout", json={"refresh_token": refresh}).status_code
+        == 204
+    )
+    assert (
+        client.post("/api/v1/auth/logout", json={"refresh_token": refresh}).status_code
+        == 204
+    )
+
+
+def test_refresh_rotation_handles_timezone_aware_expiry(api):
+    client, session_factory = api
+    assert register(client).status_code == 201
+    refresh = login(client).json()["refresh_token"]
+
+    with session_factory() as db:
+        stored = db.scalar(select(models.RefreshToken))
+        stored.expira_en = datetime.now(UTC) + timedelta(days=1)
+        rotated = auth_controller.rotate_refresh_token(refresh, db)
+
+    assert rotated.refresh_token != refresh
+
+
+@pytest.mark.parametrize("role", ["socio", "bibliotecario"])
+def test_admin_and_public_routes_cover_role_and_catalog_permissions(api, role):
+    client, session_factory = api
+    with session_factory() as db:
+        user = models.Usuario(
+            email=f"{role}@example.com",
+            nombre=role.title(),
+            password_hash=security.hash_password("BibliotecaSegura123"),
+            rol=role,
+        )
+        db.add(user)
+        db.commit()
+    token = login(client, f"{role}@example.com").json()["access_token"]
+    headers = {"Authorization": f"Bearer {token}"}
+
+    assert client.get("/api/v1/libros", headers=headers).status_code == 200
+    assert client.get("/api/v1/autores", headers=headers).status_code == 200
+    assert client.get("/api/v1/categorias", headers=headers).status_code == 200
+    assert client.get("/api/v1/reportes/resumen", headers=headers).status_code == (
+        403 if role == "socio" else 200
+    )
+    assert client.post(
+        "/api/v1/autores",
+        headers=headers,
+        json={"nombre": f"Autora {role}"},
+    ).status_code == (403 if role == "socio" else 201)
+    assert (
+        client.post(
+            "/api/v1/auth/bibliotecarios",
+            headers=headers,
+            json={
+                "nombre": "Nuevo",
+                "email": f"new-{role}@example.com",
+                "password": "BibliotecaSegura123",
+            },
+        ).status_code
+        == 403
+    )
+
+
+def test_social_account_ownership_and_disabled_member_are_enforced(api):
+    client, session_factory = api
+    member_id = register(client).json()["socio_id"]
+    token = login(client).json()["access_token"]
+    headers = {"Authorization": f"Bearer {token}"}
+    member = client.get(f"/api/v1/socios/{member_id}", headers=headers)
+    assert member.status_code == 200
+    assert client.get("/api/v1/socios", headers=headers).json()["total"] == 1
+    assert (
+        client.patch(
+            f"/api/v1/socios/{member_id}",
+            headers=headers,
+            json={"nombre": "Nombre actualizado"},
+        ).status_code
+        == 200
+    )
+    with session_factory() as db:
+        members_controller.patch_member(member_id, SocioPatch(activo=True), db)
+    other_member_id = register(client, "other-member@example.com").json()["socio_id"]
+    assert (
+        client.patch(
+            f"/api/v1/socios/{other_member_id}",
+            headers=headers,
+            json={"nombre": "No autorizado"},
+        ).status_code
+        == 404
+    )
+    assert (
+        client.patch(
+            f"/api/v1/socios/{member_id}",
+            headers=headers,
+            json={"activo": False},
+        ).status_code
+        == 422
+    )
+
+    with session_factory() as db:
+        db.get(models.Socio, member_id).activo = False
+        db.commit()
+    assert client.get("/api/v1/auth/me", headers=headers).status_code == 423
+    with session_factory() as db:
+        members_controller.delete_member(member_id, db)
+        assert db.get(models.Socio, member_id) is None
+        assert (
+            db.scalar(
+                select(models.Usuario).where(
+                    models.Usuario.email == "reader@example.com"
+                )
+            )
+            is None
+        )
+
+
+def test_current_user_rejects_malformed_claims_and_missing_accounts(api, monkeypatch):
+    _, session_factory = api
+    with session_factory() as db:
+        for claims in ({}, {"sub": None}, {"sub": "not-an-id"}):
+            monkeypatch.setattr(
+                dependencies, "decode_token", lambda *_, claims=claims: claims
+            )
+            with pytest.raises(auth_controller.NoAutenticado):
+                dependencies.get_current_user("token", db)
+
+        monkeypatch.setattr(
+            dependencies, "decode_token", lambda *_: {"sub": "999", "rol": "socio"}
+        )
+        with pytest.raises(auth_controller.NoAutenticado):
+            dependencies.get_current_user("token", db)
+
+
+def test_protected_api_requires_authentication(api):
+    client, _ = api
+    assert client.get("/api/v1/socios").status_code == 401
+
+
+def test_auth_registration_and_librarian_creation_handle_database_conflicts(
+    api, monkeypatch
+):
+    client, session_factory = api
+    with session_factory() as db:
+        db.add(
+            models.Usuario(
+                email="collision@example.com",
+                nombre="Existing",
+                password_hash="already-hashed",
+                rol="bibliotecario",
+            )
+        )
+        db.commit()
+    data = {
+        "nombre": "Nuevo usuario",
+        "email": "new@example.com",
+        "password": "BibliotecaSegura123",
+    }
+
+    with session_factory() as db:
+        monkeypatch.setattr(
+            db,
+            "commit",
+            lambda: (_ for _ in ()).throw(
+                IntegrityError("insert", {}, RuntimeError("duplicate"))
+            ),
+        )
+        with pytest.raises(auth_controller.Conflicto):
+            auth_controller.register(auth_router.RegistroCreate(**data), db)
+    with session_factory() as db:
+        monkeypatch.setattr(
+            db,
+            "commit",
+            lambda: (_ for _ in ()).throw(
+                IntegrityError("insert", {}, RuntimeError("duplicate"))
+            ),
+        )
+        with pytest.raises(auth_controller.Conflicto):
+            auth_controller.create_librarian(
+                auth_router.RegistroCreate(**{**data, "email": "staff@example.com"}),
+                db,
+            )
+    assert client.post("/api/v1/auth/registro", json=data).status_code == 201
+    with session_factory() as db, pytest.raises(auth_controller.Conflicto):
+        auth_controller.create_librarian(
+            auth_router.RegistroCreate(
+                nombre="Duplicado",
+                email="collision@example.com",
+                password="BibliotecaSegura123",
+            ),
+            db,
+        )
+
+
+def test_socio_without_member_link_gets_empty_lists_and_cannot_borrow(api):
+    client, session_factory = api
+    with session_factory() as db:
+        db.add(
+            models.Usuario(
+                email="unlinked@example.com",
+                nombre="Socio sin vínculo",
+                password_hash=security.hash_password("BibliotecaSegura123"),
+                rol="socio",
+            )
+        )
+        db.commit()
+    token = login(client, "unlinked@example.com").json()["access_token"]
+    headers = {"Authorization": f"Bearer {token}"}
+
+    assert client.get("/api/v1/prestamos", headers=headers).json() == {
+        "items": [],
+        "total": 0,
+        "skip": 0,
+        "limit": 20,
+    }
+    assert client.get("/api/v1/socios", headers=headers).json() == []
+    assert client.get("/socios").json() == []
+    assert client.get("/api/v1/prestamos/1", headers=headers).status_code == 404
+    assert client.get("/api/v1/socios/1", headers=headers).status_code == 404
+    assert client.get("/api/v1/socios/1/prestamos", headers=headers).status_code == 404
+    assert (
+        client.post(
+            "/api/v1/prestamos",
+            headers=headers,
+            json={"libro_id": 1, "socio_id": 1},
+        ).status_code
+        == 403
+    )
+
+
+def test_socio_can_only_borrow_and_list_their_own_loans(api):
+    client, session_factory = api
+    own_member_id = register(client).json()["socio_id"]
+    with session_factory() as db:
+        author = models.Autor(nombre="Autora Socia")
+        category = models.Categoria(nombre="socia")
+        db.add_all((author, category))
+        db.flush()
+        book = models.Libro(
+            titulo="Libro de Socia",
+            isbn="9780000000006",
+            anio_publicacion=2020,
+            ejemplares=1,
+            autor_id=author.id,
+            categorias=[category],
+        )
+        other_member = models.Socio(
+            nombre="Otra Socia",
+            email="other-owner@example.com",
+        )
+        db.add_all((book, other_member))
+        db.commit()
+        book_id = book.id
+        other_member_id = other_member.id
+    token = login(client).json()["access_token"]
+    headers = {"Authorization": f"Bearer {token}"}
+
+    own_loan = client.post(
+        "/api/v1/prestamos",
+        headers=headers,
+        json={"libro_id": book_id, "socio_id": own_member_id},
+    )
+    assert own_loan.status_code == 201
+    assert client.get("/api/v1/prestamos", headers=headers).json()["total"] == 1
+    assert (
+        client.get(f"/api/v1/socios/{own_member_id}/prestamos", headers=headers).json()[
+            "total"
+        ]
+        == 1
+    )
+    assert (
+        client.get(
+            f"/api/v1/socios/{other_member_id}/prestamos", headers=headers
+        ).status_code
+        == 404
+    )
+    assert (
+        client.post(
+            "/api/v1/prestamos",
+            headers=headers,
+            json={"libro_id": book_id, "socio_id": other_member_id},
+        ).status_code
+        == 403
     )

@@ -1,5 +1,7 @@
 """Pruebas aisladas para los comandos de administración y migración."""
 
+import runpy
+
 import pytest
 from sqlalchemy import Column, MetaData, String, Table, create_engine, select
 from sqlalchemy.orm import sessionmaker
@@ -98,6 +100,38 @@ def test_create_admin_does_not_create_second_administrator(admin_database, monke
         create_admin.main()
 
 
+def test_create_admin_module_entrypoint_runs_with_secure_prompts(
+    admin_database, monkeypatch, capsys
+):
+    import getpass
+
+    from app.core import database
+
+    provide_admin_input(
+        monkeypatch,
+        "command@example.com",
+        "Admin de comando",
+        "BibliotecaSegura123",
+        "BibliotecaSegura123",
+    )
+    monkeypatch.setattr(database, "SessionLocal", admin_database)
+    passwords = iter(("BibliotecaSegura123", "BibliotecaSegura123"))
+    monkeypatch.setattr(getpass, "getpass", lambda _: next(passwords))
+
+    runpy.run_module("app.scripts.crear_admin", run_name="__main__")
+
+    assert "Administrador creado correctamente." in capsys.readouterr().out
+    with admin_database() as db:
+        assert db.scalar(select(Usuario.email)) == "command@example.com"
+
+
+def test_create_admin_entrypoint_reports_invalid_email(monkeypatch):
+    monkeypatch.setattr("builtins.input", lambda _: "invalid-email")
+
+    with pytest.raises(SystemExit):
+        runpy.run_module("app.scripts.crear_admin", run_name="__main__")
+
+
 @pytest.fixture
 def migration_database(monkeypatch):
     engine = create_engine("sqlite://")
@@ -186,3 +220,20 @@ def test_migration_main_stamps_then_upgrades(migration_database, monkeypatch):
     migrate.main()
 
     assert calls == ["stamp", (migrate.ALEMBIC_CONFIG, "head")]
+
+
+def test_migration_module_entrypoint_runs(migration_database, monkeypatch):
+    from app.core import database
+
+    engine, _ = migration_database
+    upgrades = []
+    monkeypatch.setattr(database, "engine", engine)
+    monkeypatch.setattr(
+        migrate.command,
+        "upgrade",
+        lambda config, revision: upgrades.append(revision),
+    )
+
+    runpy.run_module("app.scripts.migrate", run_name="__main__")
+
+    assert upgrades == ["head"]

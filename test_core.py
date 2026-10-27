@@ -75,6 +75,17 @@ def test_database_dependency_closes_session(monkeypatch):
 def test_database_url_rejects_non_postgresql_driver():
     with pytest.raises(ValueError, match="PostgreSQL"):
         database._parse_database_url("sqlite:///libreria.db")
+    with pytest.raises(ValueError, match="PostgreSQL"):
+        database._parse_database_url(
+            "postgresql+psycopg2://user:password@localhost/libreria"
+        )
+
+
+def test_database_url_rejects_wrong_database_name():
+    with pytest.raises(ValueError, match="base libreria"):
+        database._parse_database_url("postgresql://localhost/another_database")
+    with pytest.raises(ValueError, match="base libreria"):
+        database._parse_database_url("postgresql://localhost")
 
 
 def test_access_token_round_trip_and_wrong_token_type():

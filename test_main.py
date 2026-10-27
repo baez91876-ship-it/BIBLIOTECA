@@ -738,6 +738,50 @@ class BibliotecaApiTests(unittest.TestCase):
             self.client.delete(f"/prestamos/{loans[0]['id']}").status_code, 409
         )
 
+    def test_listados_legacy_de_recursos_y_prestamos(self):
+        author = self.client.post(
+            "/autores",
+            json={"nombre": "Autora para listados", "nacionalidad": "Peruana"},
+        ).json()
+        category = self.client.post(
+            "/categorias", json={"nombre": "Categoría listados"}
+        ).json()
+        book = self.client.post(
+            "/libros",
+            json={
+                "titulo": "Libro para listados",
+                "isbn": "9780000000010",
+                "anio_publicacion": 2020,
+                "ejemplares": 1,
+                "autor_id": author["id"],
+                "categoria_ids": [category["id"]],
+            },
+        ).json()
+        member = self.client.post(
+            "/socios",
+            json={"nombre": "Socia listados", "email": "listados@example.com"},
+        ).json()
+        loan = self.client.post(
+            "/prestamos",
+            json={"libro_id": book["id"], "socio_id": member["id"]},
+        ).json()
+
+        self.assertEqual(self.client.get("/autores?nacionalidad=peru").status_code, 200)
+        self.assertEqual(
+            self.client.get(f"/autores/{author['id']}/libros").json()[0]["id"],
+            book["id"],
+        )
+        self.assertEqual(self.client.get("/categorias").status_code, 200)
+        self.assertEqual(
+            self.client.get("/prestamos?estado=activo").json()[0]["id"], loan["id"]
+        )
+        self.assertEqual(
+            self.client.get(f"/socios/{member['id']}/prestamos?estado=activo").json()[
+                0
+            ]["id"],
+            loan["id"],
+        )
+
 
 if __name__ == "__main__":
     unittest.main()
