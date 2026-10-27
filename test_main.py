@@ -313,6 +313,143 @@ class BibliotecaApiTests(unittest.TestCase):
             422,
         )
 
+    def test_primeras_diez_acciones_de_aceptacion(self):
+        """Verifica las primeras diez acciones de aceptación con peticiones HTTP."""
+        authors = [
+            self.client.post(
+                "/autores",
+                json={"nombre": name},
+            ).json()
+            for name in (
+                "Gabriel García Márquez",
+                "Isabel Allende",
+                "George Orwell",
+            )
+        ]
+        categories = [
+            self.client.post("/categorias", json={"nombre": name}).json()
+            for name in ("Novela", "Realismo Mágico", "Distopía", "Poesía")
+        ]
+        books = [
+            {
+                "titulo": "Cien años de soledad",
+                "isbn": "9780307474728",
+                "anio_publicacion": 1967,
+                "ejemplares": 2,
+                "autor_id": authors[0]["id"],
+                "categoria_ids": [categories[0]["id"], categories[1]["id"]],
+            },
+            {
+                "titulo": "El amor en los tiempos del cólera",
+                "isbn": "9780307389732",
+                "anio_publicacion": 1985,
+                "ejemplares": 1,
+                "autor_id": authors[0]["id"],
+                "categoria_ids": [categories[0]["id"]],
+            },
+            {
+                "titulo": "La casa de los espíritus",
+                "isbn": "9780553383805",
+                "anio_publicacion": 1982,
+                "ejemplares": 2,
+                "autor_id": authors[1]["id"],
+                "categoria_ids": [categories[0]["id"], categories[1]["id"]],
+            },
+            {
+                "titulo": "1984",
+                "isbn": "9780451524935",
+                "anio_publicacion": 1949,
+                "ejemplares": 3,
+                "autor_id": authors[2]["id"],
+                "categoria_ids": [categories[0]["id"], categories[2]["id"]],
+            },
+        ]
+        for book in books:
+            response = self.client.post("/libros", json=book)
+            self.assertEqual(response.status_code, 201)
+        members = [
+            self.client.post(
+                "/socios", json={"nombre": name, "email": email}
+            ).json()
+            for name, email in (
+                ("Ana Torres", "ana@example.com"),
+                ("Luis Pérez", "luis@example.com"),
+            )
+        ]
+
+        # 1. Duplicate author is a conflict.
+        self.assertEqual(
+            self.client.post(
+                "/autores", json={"nombre": "Gabriel García Márquez"}
+            ).status_code,
+            409,
+        )
+        # 2. Invalid ISBN is rejected.
+        self.assertEqual(
+            self.client.post(
+                "/libros", json={**books[0], "isbn": "123"}
+            ).status_code,
+            422,
+        )
+        # 3. Duplicate category IDs are rejected.
+        self.assertEqual(
+            self.client.post(
+                "/libros",
+                json={
+                    **books[0],
+                    "isbn": "9780307474000",
+                    "categoria_ids": [1, 1],
+                },
+            ).status_code,
+            422,
+        )
+        # 4. A missing author returns 404.
+        self.assertEqual(
+            self.client.post(
+                "/libros",
+                json={**books[0], "isbn": "9780307474001", "autor_id": 99},
+            ).status_code,
+            404,
+        )
+        # 5. Category and descending-year filters return the expected books.
+        filtered = self.client.get("/libros?categoria_id=2&orden=-anio").json()
+        self.assertEqual(
+            [book["anio_publicacion"] for book in filtered], [1982, 1967]
+        )
+        # 6. Author substring filter returns both books by García Márquez.
+        self.assertEqual(len(self.client.get("/libros?autor=gabriel").json()), 2)
+        # 7. The first member can borrow book 2.
+        loan = self.client.post(
+            "/prestamos",
+            json={"libro_id": 2, "socio_id": members[0]["id"]},
+        )
+        self.assertEqual(loan.status_code, 201)
+        self.assertEqual(loan.json()["estado"], "activo")
+        # 8. The second member cannot borrow the unavailable copy.
+        self.assertEqual(
+            self.client.post(
+                "/prestamos",
+                json={"libro_id": 2, "socio_id": members[1]["id"]},
+            ).status_code,
+            422,
+        )
+        # 9. No copies remain available for book 2.
+        self.assertEqual(
+            self.client.get("/libros/2").json()["disponibles"], 0
+        )
+        # 10. A loan from 20 days ago with a 7-day term is overdue.
+        overdue = self.client.post(
+            "/prestamos",
+            json={
+                "libro_id": 1,
+                "socio_id": members[1]["id"],
+                "fecha_prestamo": (date.today() - timedelta(days=20)).isoformat(),
+                "dias": 7,
+            },
+        )
+        self.assertEqual(overdue.status_code, 201)
+        self.assertEqual(overdue.json()["estado"], "vencido")
+
     def test_recursos_inexistentes_responden_404_json(self):
         """Los endpoints de detalle y sus relaciones informan los recursos ausentes."""
         expected_details = {
