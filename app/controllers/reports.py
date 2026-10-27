@@ -2,7 +2,7 @@
 
 from datetime import date
 
-from sqlalchemy import Integer, case, distinct, func, select
+from sqlalchemy import Integer, case, distinct, func, literal, select, true
 from sqlalchemy.orm import Session
 
 from ..core.dependencies import Pagination
@@ -203,13 +203,22 @@ def _days_late_expression(db: Session):
 
 
 def _execute_report_page(db: Session, query) -> tuple[list[dict], int]:
-    """Agrega el total con una función de ventana, manteniendo una sola consulta."""
-    rows = db.execute(query.add_columns(func.count().over().label("_total"))).all()
+    """Obtiene el total y la página con una sentencia, incluso si la página es vacía."""
+    base = query.order_by(None).offset(None).limit(None).subquery("report_rows")
+    page = query.subquery("report_page")
+    total = select(func.count()).select_from(base).scalar_subquery()
+    seed = select(literal(1).label("seed")).subquery("report_seed")
+    statement = select(*page.c, total.label("_total")).select_from(
+        seed.outerjoin(page, true())
+    )
+    rows = db.execute(statement).all()
     if not rows:
         return [], 0
-    total = rows[0]._mapping["_total"]
+    total_count = rows[0]._mapping["_total"]
+    first_column = next(iter(page.c.keys()))
     items = [
         {key: value for key, value in row._mapping.items() if key != "_total"}
         for row in rows
+        if row._mapping[first_column] is not None
     ]
-    return items, total
+    return items, total_count

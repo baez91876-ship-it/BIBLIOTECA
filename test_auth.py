@@ -322,6 +322,7 @@ def test_reporte_paginado_v2_conserva_una_sola_consulta_sql(api):
                 rol="administrador",
             )
         )
+        db.add(models.Categoria(nombre="Poesía"))
         db.commit()
     access = login(client, "reporter@example.com").json()["access_token"]
     engine = session_factory.kw["bind"]
@@ -334,13 +335,13 @@ def test_reporte_paginado_v2_conserva_una_sola_consulta_sql(api):
     event.listen(engine, "before_cursor_execute", capture_report_query)
     try:
         response = client.get(
-            "/api/v1/reportes/categorias",
+            "/api/v1/reportes/categorias?skip=5&limit=2",
             headers={"Authorization": f"Bearer {access}"},
         )
     finally:
         event.remove(engine, "before_cursor_execute", capture_report_query)
 
     assert response.status_code == 200
-    assert response.json()["total"] == 0
+    assert response.json()["total"] == 1
     assert response.json()["items"] == []
     assert len(report_queries) == 1

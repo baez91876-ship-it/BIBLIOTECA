@@ -8,7 +8,7 @@ from uuid import uuid4
 
 from fastapi import APIRouter, Depends, FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
@@ -111,9 +111,9 @@ def interfaz():
 
 @app.get("/api-config.js", include_in_schema=False)
 def configuracion_api():
-    """Entrega la configuración JavaScript de la API para la interfaz."""
-    return FileResponse(
-        FRONTEND_ROOT / "api-config.js",
+    """Usa el mismo origen para la interfaz servida por esta API."""
+    return Response(
+        "window.BIBLIOTECA_API_URL = '';",
         media_type="application/javascript",
     )
 

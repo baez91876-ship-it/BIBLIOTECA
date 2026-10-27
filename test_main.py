@@ -81,6 +81,13 @@ class BibliotecaApiTests(unittest.TestCase):
         self.assertEqual(url.drivername, "postgresql+psycopg")
         self.assertEqual(url.database, "libreria")
 
+    def test_api_config_usa_el_mismo_origen_de_la_interfaz(self):
+        response = self.client.get("/api-config.js")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("window.BIBLIOTECA_API_URL = '';", response.text)
+        self.assertNotIn("onrender.com", response.text)
+
     def test_24_casos_de_aceptacion_del_taller(self):
         """Comprueba reglas funcionales de catálogo, préstamos y reportes."""
         author_names = [
@@ -576,9 +583,15 @@ class BibliotecaApiTests(unittest.TestCase):
             self.client.get("/api-config.js").headers["content-type"],
             "application/javascript",
         )
+        self.assertEqual(
+            self.client.get("/api-config.js").text,
+            "window.BIBLIOTECA_API_URL = '';",
+        )
         self.assertIn(
             "https://biblioteca-api-baez91876-ship-it.onrender.com",
-            self.client.get("/api-config.js").text,
+            (app_module.FRONTEND_ROOT / "api-config.js").read_text(
+                encoding="utf-8"
+            ),
         )
         catalog = self.client.get("/catalogo.json")
         self.assertEqual(catalog.status_code, 200)
