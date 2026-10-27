@@ -663,12 +663,63 @@ document.querySelector("#cancel-record-dialog").addEventListener("click", () => 
 const loginDialog = document.querySelector("#login-dialog");
 const loginForm = document.querySelector("#login-form");
 const loginError = document.querySelector("#login-error");
+const registerDialog = document.querySelector("#register-dialog");
+const registerForm = document.querySelector("#register-form");
+const registerError = document.querySelector("#register-error");
 document.querySelector("#login-button").addEventListener("click", () => {
   loginError.hidden = true;
   loginDialog.showModal();
 });
 document.querySelector("#close-login-dialog").addEventListener("click", () => loginDialog.close());
 document.querySelector("#cancel-login").addEventListener("click", () => loginDialog.close());
+document.querySelector("#open-register").addEventListener("click", () => {
+  loginDialog.close();
+  registerError.hidden = true;
+  registerDialog.showModal();
+  document.querySelector("#register-name").focus();
+});
+document.querySelector("#close-register-dialog").addEventListener("click", () => registerDialog.close());
+document.querySelector("#cancel-register").addEventListener("click", () => registerDialog.close());
+document.querySelector("#open-login").addEventListener("click", () => {
+  registerDialog.close();
+  loginError.hidden = true;
+  loginDialog.showModal();
+  document.querySelector("#login-email").focus();
+});
+registerForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const submitButton = document.querySelector("#submit-register");
+  registerError.hidden = true;
+  submitButton.disabled = true;
+  try {
+    const formData = new FormData(registerForm);
+    const response = await fetch(`${apiBaseUrl}/api/v1/auth/registro`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(Object.fromEntries(formData)),
+    });
+    const result = await response.json();
+    if (!response.ok) {
+      const detail = Array.isArray(result.detail)
+        ? result.detail.map((item) => item.msg).join(" ")
+        : result.detail;
+      throw new Error(detail || `Error ${response.status}: no se pudo crear la cuenta.`);
+    }
+    const email = formData.get("email");
+    registerForm.reset();
+    registerDialog.close();
+    document.querySelector("#login-email").value = email;
+    loginError.hidden = true;
+    loginDialog.showModal();
+    document.querySelector("#login-password").focus();
+    showNotice("Cuenta creada correctamente. Inicia sesión para continuar.");
+  } catch (error) {
+    registerError.textContent = error.message;
+    registerError.hidden = false;
+  } finally {
+    submitButton.disabled = false;
+  }
+});
 document.querySelector("#logout-button").addEventListener("click", async () => {
   if (refreshToken) {
     try {

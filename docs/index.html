@@ -260,6 +260,31 @@
         <button class="button button-secondary" id="cancel-login" type="button">Cancelar</button>
         <button class="button button-primary" id="submit-login" type="submit">Entrar</button>
       </div>
+      <p class="auth-switch">¿Aún no tienes cuenta? <button class="text-button" id="open-register" type="button">Crear cuenta</button></p>
+    </form>
+  </dialog>
+  <dialog class="book-dialog" id="register-dialog" aria-labelledby="register-title">
+    <form id="register-form">
+      <div class="dialog-heading">
+        <div>
+          <p class="eyebrow">ÚNETE A LA BIBLIOTECA</p>
+          <h2 id="register-title">Crear cuenta</h2>
+        </div>
+        <button class="icon-button" id="close-register-dialog" type="button" aria-label="Cerrar">×</button>
+      </div>
+      <label for="register-name">Nombre</label>
+      <input id="register-name" name="nombre" required minlength="2" maxlength="100" autocomplete="name">
+      <label for="register-email">Correo electrónico</label>
+      <input id="register-email" name="email" type="email" required maxlength="150" autocomplete="email">
+      <label for="register-password">Contraseña</label>
+      <input id="register-password" name="password" type="password" required minlength="12" maxlength="128" autocomplete="new-password">
+      <p class="auth-help">Usa al menos 12 caracteres e incluye letras y números. La cuenta tendrá permisos de socio.</p>
+      <p class="form-error" id="register-error" role="alert" hidden></p>
+      <div class="dialog-actions">
+        <button class="button button-secondary" id="cancel-register" type="button">Cancelar</button>
+        <button class="button button-primary" id="submit-register" type="submit">Crear cuenta</button>
+      </div>
+      <p class="auth-switch">¿Ya tienes cuenta? <button class="text-button" id="open-login" type="button">Iniciar sesión</button></p>
     </form>
   </dialog>
 </body>

@@ -158,6 +158,9 @@ th:last-child, td:last-child { width: 100px; text-align: right; }
 .checkbox-label input { accent-color: var(--green); }
 .dialog-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 23px; }
 .form-error { margin: 12px 0 0; color: #aa5146; font-size: 11px; }
+.auth-switch { margin: 16px 0 0; color: #7d857d; font-size: 11px; text-align: center; }
+.auth-switch .text-button { padding: 0; text-decoration: underline; }
+.auth-help { margin: 8px 0 0; color: #818a81; font-size: 10px; line-height: 1.5; }
 .visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; clip-path: inset(50%); }
 
 /* Ajustes para pantallas medianas y móviles. */

@@ -566,6 +566,9 @@ class BibliotecaApiTests(unittest.TestCase):
                 "management-view",
                 "book-dialog",
                 "record-dialog",
+                "login-dialog",
+                "register-dialog",
+                "register-form",
                 "book-list",
                 "management-list",
                 "record-fields",
@@ -603,6 +606,7 @@ class BibliotecaApiTests(unittest.TestCase):
         self.assertTrue(
             all(book["autor"]["id"] in author_ids for book in catalog_data["libros"])
         )
+        self.assertIn("/api/v1/auth/registro", app_script.text)
         self.assertTrue(
             all(
                 category["id"] in category_ids
