@@ -1,6 +1,4 @@
-# Dependencias de la API, validación de datos y consultas.
-requests==2.34.2
-rich==15.0.0
+# Dependencias de la API y validación de datos.
 fastapi==0.143.0
 uvicorn==0.54.0
 pydantic==2.14.1
