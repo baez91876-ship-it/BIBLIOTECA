@@ -91,6 +91,16 @@ URL al servicio, actualiza `window.BIBLIOTECA_API_URL` en `docs/api-config.js`
 con la URL que aparece en el Dashboard y sube ese cambio. GitHub Pages volverá a
 publicar la interfaz automáticamente desde `main` / `/docs`.
 
+Si los logs de Render muestran `ValidationError` para `Settings` y el campo
+`database_url` como obligatorio, el servicio no recibió `DATABASE_URL`. Crea o
+sincroniza los recursos desde **New → Blueprint** usando este repositorio y la
+rama que contiene `render.yaml`; el Blueprint conecta automáticamente
+`DATABASE_URL` con la cadena de conexión de `biblioteca-postgres`. Si el servicio
+web se creó manualmente, agrega `DATABASE_URL` en **Environment** usando la URL
+interna de esa base y confirma que su nombre de base sea `libreria`. No guardes
+esa URL ni sus credenciales en Git. Después de corregir el entorno, vuelve a
+desplegar y verifica `/api/v1/health`.
+
 Después del primer despliegue, crea el primer administrador desde la consola
 del servicio con `python -m app.scripts.crear_admin`. El comando solicita correo,
 nombre y contraseña sin mostrarla en pantalla; no existe una contraseña inicial
