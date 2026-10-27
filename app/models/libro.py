@@ -1,10 +1,17 @@
 """Modelo ORM de los libros y sus relaciones de catálogo y préstamos."""
 
+from typing import TYPE_CHECKING
+
 from sqlalchemy import ForeignKey, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from ..core.database import Base
 from .categoria import libro_categoria
+
+if TYPE_CHECKING:
+    from .autor import Autor
+    from .categoria import Categoria
+    from .prestamo import Prestamo
 
 
 class Libro(Base):

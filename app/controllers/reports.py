@@ -9,9 +9,7 @@ from ..core.dependencies import Pagination
 from ..models import Autor, Categoria, Libro, Prestamo, Socio, libro_categoria
 
 
-def most_borrowed_books(
-    db: Session, skip: int, limit: int
-) -> list[dict]:
+def most_borrowed_books(db: Session, skip: int, limit: int) -> list[dict]:
     """Devuelve el ranking de libros ordenado por cantidad de préstamos."""
     query = (
         select(
@@ -38,9 +36,7 @@ def books_by_category(db: Session, pagination: Pagination) -> list[dict]:
             Categoria.nombre.label("nombre"),
             func.count(distinct(libro_categoria.c.libro_id)).label("total_libros"),
         )
-        .outerjoin(
-            libro_categoria, libro_categoria.c.categoria_id == Categoria.id
-        )
+        .outerjoin(libro_categoria, libro_categoria.c.categoria_id == Categoria.id)
         .group_by(Categoria.id, Categoria.nombre)
         .order_by(Categoria.nombre, Categoria.id)
         .offset(pagination.skip)
@@ -121,12 +117,8 @@ def authors_summary(db: Session, pagination: Pagination) -> list[dict]:
             Autor.id.label("autor_id"),
             Autor.nombre.label("nombre"),
             func.coalesce(book_totals.c.total_libros, 0).label("total_libros"),
-            func.coalesce(book_totals.c.total_ejemplares, 0).label(
-                "total_ejemplares"
-            ),
-            func.coalesce(loan_totals.c.total_prestamos, 0).label(
-                "total_prestamos"
-            ),
+            func.coalesce(book_totals.c.total_ejemplares, 0).label("total_ejemplares"),
+            func.coalesce(loan_totals.c.total_prestamos, 0).label("total_prestamos"),
         )
         .outerjoin(book_totals, book_totals.c.autor_id == Autor.id)
         .outerjoin(loan_totals, loan_totals.c.autor_id == Autor.id)
@@ -146,13 +138,19 @@ def authors_summary(db: Session, pagination: Pagination) -> list[dict]:
 
 def library_summary(db: Session) -> dict:
     """Calcula los indicadores globales en una sola consulta."""
-    active_loans = select(func.count(Prestamo.id)).where(
-        Prestamo.fecha_devolucion.is_(None)
-    ).scalar_subquery()
-    overdue = select(func.count(Prestamo.id)).where(
-        Prestamo.fecha_devolucion.is_(None),
-        Prestamo.fecha_limite < date.today(),
-    ).scalar_subquery()
+    active_loans = (
+        select(func.count(Prestamo.id))
+        .where(Prestamo.fecha_devolucion.is_(None))
+        .scalar_subquery()
+    )
+    overdue = (
+        select(func.count(Prestamo.id))
+        .where(
+            Prestamo.fecha_devolucion.is_(None),
+            Prestamo.fecha_limite < date.today(),
+        )
+        .scalar_subquery()
+    )
     query = select(
         select(func.count(Libro.id)).scalar_subquery().label("total_libros"),
         select(func.coalesce(func.sum(Libro.ejemplares), 0))
@@ -179,7 +177,6 @@ def _days_late_expression(db: Session):
     if db.get_bind().dialect.name == "postgresql":
         return today - Prestamo.fecha_limite
     return func.cast(
-        func.julianday(today)
-        - func.julianday(Prestamo.fecha_limite),
+        func.julianday(today) - func.julianday(Prestamo.fecha_limite),
         Integer,
     )

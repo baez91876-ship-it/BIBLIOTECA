@@ -20,11 +20,12 @@ from ..schemas.prestamo import (
 
 def _loan_options():
     """Define las relaciones necesarias para responder préstamos completos."""
-    return joinedload(Prestamo.socio), joinedload(Prestamo.libro).selectinload(
-        Libro.autor
-    ), joinedload(Prestamo.libro).selectinload(
-        Libro.categorias
-    ), joinedload(Prestamo.libro).selectinload(Libro.prestamos)
+    return (
+        joinedload(Prestamo.socio),
+        joinedload(Prestamo.libro).selectinload(Libro.autor),
+        joinedload(Prestamo.libro).selectinload(Libro.categorias),
+        joinedload(Prestamo.libro).selectinload(Libro.prestamos),
+    )
 
 
 def list_loans(
@@ -52,19 +53,21 @@ def list_loans(
         query = query.where(Prestamo.socio_id == socio_id)
     if libro_id is not None:
         query = query.where(Prestamo.libro_id == libro_id)
-    return db.scalars(
-        query.order_by(Prestamo.fecha_prestamo.desc(), Prestamo.id)
-        .offset(pagination.skip)
-        .limit(pagination.limit)
-    ).unique().all()
+    return (
+        db.scalars(
+            query.order_by(Prestamo.fecha_prestamo.desc(), Prestamo.id)
+            .offset(pagination.skip)
+            .limit(pagination.limit)
+        )
+        .unique()
+        .all()
+    )
 
 
 def get_loan(loan_id: int, db: Session) -> Prestamo:
     """Obtiene un préstamo con sus relaciones o informa que no existe."""
     loan = db.scalar(
-        select(Prestamo)
-        .where(Prestamo.id == loan_id)
-        .options(*_loan_options())
+        select(Prestamo).where(Prestamo.id == loan_id).options(*_loan_options())
     )
     if loan is None:
         raise NoEncontrado("Préstamo no encontrado")
@@ -73,9 +76,7 @@ def get_loan(loan_id: int, db: Session) -> Prestamo:
 
 def create_loan(data: PrestamoCreate, db: Session) -> Prestamo:
     """Crea un préstamo tras bloquear y validar socio, libro y disponibilidad."""
-    member = db.scalar(
-        select(Socio).where(Socio.id == data.socio_id).with_for_update()
-    )
+    member = db.scalar(select(Socio).where(Socio.id == data.socio_id).with_for_update())
     if member is None:
         raise NoEncontrado("Socio no encontrado")
     book = db.scalar(select(Libro).where(Libro.id == data.libro_id).with_for_update())
@@ -126,20 +127,16 @@ def create_loan(data: PrestamoCreate, db: Session) -> Prestamo:
         libro_id=book.id,
         fecha_prestamo=loan_date,
         fecha_limite=loan_date + timedelta(days=data.dias),
-        multa=Decimal("0"),
+        multa=Decimal(0),
     )
     db.add(loan)
     _commit(db)
     return get_loan(loan.id, db)
 
 
-def return_loan(
-    loan_id: int, data: DevolucionCreate, db: Session
-) -> Prestamo:
+def return_loan(loan_id: int, data: DevolucionCreate, db: Session) -> Prestamo:
     """Registra la devolución y calcula 0,50 por cada día de retraso."""
-    loan = db.scalar(
-        select(Prestamo).where(Prestamo.id == loan_id).with_for_update()
-    )
+    loan = db.scalar(select(Prestamo).where(Prestamo.id == loan_id).with_for_update())
     if loan is None:
         raise NoEncontrado("Préstamo no encontrado")
     if loan.fecha_devolucion is not None:
@@ -155,9 +152,7 @@ def return_loan(
 
 def patch_loan(loan_id: int, data: PrestamoPatch, db: Session) -> Prestamo:
     """Actualiza la fecha límite solo mientras el préstamo siga abierto."""
-    loan = db.scalar(
-        select(Prestamo).where(Prestamo.id == loan_id).with_for_update()
-    )
+    loan = db.scalar(select(Prestamo).where(Prestamo.id == loan_id).with_for_update())
     if loan is None:
         raise NoEncontrado("Préstamo no encontrado")
     if loan.fecha_devolucion is not None:
@@ -171,9 +166,7 @@ def patch_loan(loan_id: int, data: PrestamoPatch, db: Session) -> Prestamo:
 
 def delete_loan(loan_id: int, db: Session) -> None:
     """Elimina préstamos abiertos, preservando los ya devueltos."""
-    loan = db.scalar(
-        select(Prestamo).where(Prestamo.id == loan_id).with_for_update()
-    )
+    loan = db.scalar(select(Prestamo).where(Prestamo.id == loan_id).with_for_update())
     if loan is None:
         raise NoEncontrado("Préstamo no encontrado")
     if loan.fecha_devolucion is not None:

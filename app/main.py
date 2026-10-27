@@ -11,7 +11,7 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy import inspect, text
 
-from . import models
+from . import models  # noqa: F401  # Register models in SQLAlchemy metadata.
 from .core.database import Base, engine
 from .core.exceptions import ErrorAplicacion
 from .routes import authors, books, categories, loans, members, reports
@@ -67,8 +67,7 @@ async def lifespan(_: FastAPI):
             )
         for table_name, expected in expected_columns.items():
             actual = {
-                column["name"]
-                for column in inspect(connection).get_columns(table_name)
+                column["name"] for column in inspect(connection).get_columns(table_name)
             }
             missing_columns = expected - actual
             if missing_columns:
@@ -78,8 +77,7 @@ async def lifespan(_: FastAPI):
                     "Migra la base de datos o configura una base nueva."
                 )
         logger.info(
-            "Conexión exitosa a la base de datos '%s' (%s). "
-            "Tablas disponibles: %s",
+            "Conexión exitosa a la base de datos '%s' (%s). Tablas disponibles: %s",
             database_name,
             engine.dialect.name,
             ", ".join(table_names),
@@ -105,9 +103,7 @@ if cors_origins:
         allow_methods=["GET", "POST", "PATCH", "DELETE"],
         allow_headers=["Content-Type"],
     )
-app.mount(
-    "/static", StaticFiles(directory=FRONTEND_ROOT / "static"), name="static"
-)
+app.mount("/static", StaticFiles(directory=FRONTEND_ROOT / "static"), name="static")
 app.include_router(books.router)
 app.include_router(authors.router)
 app.include_router(categories.router)

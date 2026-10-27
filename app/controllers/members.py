@@ -46,9 +46,7 @@ def patch_member(member_id: int, data: SocioPatch, db: Session) -> Socio:
     changes = data.model_dump(exclude_unset=True)
     email = changes.get("email")
     if email is not None and db.scalar(
-        select(Socio.id).where(
-            Socio.email == str(email).lower(), Socio.id != member_id
-        )
+        select(Socio.id).where(Socio.email == str(email).lower(), Socio.id != member_id)
     ):
         raise Conflicto("El correo electrónico ya está registrado")
     for field, value in changes.items():
@@ -68,9 +66,7 @@ def delete_member(member_id: int, db: Session) -> None:
     )
     if active_loan is not None:
         raise Conflicto("No se puede eliminar un socio con préstamos sin devolver")
-    history = db.scalar(
-        select(Prestamo.id).where(Prestamo.socio_id == member_id)
-    )
+    history = db.scalar(select(Prestamo.id).where(Prestamo.socio_id == member_id))
     if history is not None:
         member.activo = False
         db.commit()

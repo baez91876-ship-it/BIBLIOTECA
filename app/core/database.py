@@ -31,8 +31,6 @@ SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False)
 class Base(DeclarativeBase):
     """Clase base para registrar los modelos ORM de la aplicación."""
 
-    pass
-
 
 def get_db():
     """Proporciona una sesión por solicitud y la cierra al terminar."""

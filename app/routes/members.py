@@ -43,9 +43,7 @@ def crear_socio(data: SocioCreate, db: SessionDep) -> Socio:
 
 
 @router.patch("/{socio_id}", response_model=SocioRead)
-def actualizar_socio(
-    socio_id: int, data: SocioPatch, db: SessionDep
-) -> Socio:
+def actualizar_socio(socio_id: int, data: SocioPatch, db: SessionDep) -> Socio:
     """Modifica los campos enviados del socio."""
     return members.patch_member(socio_id, data, db)
 

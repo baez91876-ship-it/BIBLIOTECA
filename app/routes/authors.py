@@ -45,9 +45,7 @@ def crear_autor(data: AutorCreate, db: SessionDep) -> Autor:
 
 
 @router.patch("/{autor_id}", response_model=AutorRead)
-def actualizar_autor(
-    autor_id: int, data: AutorPatch, db: SessionDep
-) -> Autor:
+def actualizar_autor(autor_id: int, data: AutorPatch, db: SessionDep) -> Autor:
     """Modifica los campos enviados del autor."""
     return authors.patch_author(autor_id, data, db)
 

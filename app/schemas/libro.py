@@ -55,9 +55,7 @@ class LibroPatch(BaseModel):
 
     titulo: str | None = Field(default=None, min_length=1, max_length=150)
     isbn: str | None = Field(default=None, pattern=r"^\d{13}$")
-    anio_publicacion: int | None = Field(
-        default=None, ge=1450, le=date.today().year
-    )
+    anio_publicacion: int | None = Field(default=None, ge=1450, le=date.today().year)
     ejemplares: int | None = Field(default=None, ge=1, le=50)
     autor_id: int | None = Field(default=None, gt=0)
     categoria_ids: list[int] | None = Field(default=None, min_length=1, max_length=5)
@@ -70,19 +68,14 @@ class LibroPatch(BaseModel):
 
     @field_validator("categoria_ids")
     @classmethod
-    def validar_categoria_ids(
-        cls, value: list[int] | None
-    ) -> list[int] | None:
+    def validar_categoria_ids(cls, value: list[int] | None) -> list[int] | None:
         """Valida las categorías si se envían en la actualización."""
         return _validar_categoria_ids(value) if value is not None else None
 
     @model_validator(mode="after")
     def validar_valores_no_nulos(self):
         """Rechaza nulos explícitos para campos incluidos en PATCH."""
-        if any(
-            getattr(self, field) is None
-            for field in self.model_fields_set
-        ):
+        if any(getattr(self, field) is None for field in self.model_fields_set):
             raise ValueError("Los campos enviados no pueden ser nulos")
         return self
 

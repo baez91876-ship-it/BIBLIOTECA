@@ -22,8 +22,10 @@ class OrdenLibro(str, Enum):
 
 def _libro_con_relaciones():
     """Carga las relaciones necesarias para serializar un libro sin consultas extra."""
-    return selectinload(Libro.autor), selectinload(Libro.categorias), selectinload(
-        Libro.prestamos
+    return (
+        selectinload(Libro.autor),
+        selectinload(Libro.categorias),
+        selectinload(Libro.prestamos),
     )
 
 
@@ -58,17 +60,15 @@ def list_books(
         query = query.order_by(Libro.anio_publicacion.desc(), Libro.id)
     else:
         query = query.order_by(Libro.titulo, Libro.id)
-    return db.scalars(
-        query.offset(pagination.skip).limit(pagination.limit)
-    ).unique().all()
+    return (
+        db.scalars(query.offset(pagination.skip).limit(pagination.limit)).unique().all()
+    )
 
 
 def get_book(book_id: int, db: Session) -> Libro:
     """Obtiene un libro con sus relaciones o informa que no existe."""
     book = db.scalar(
-        select(Libro)
-        .where(Libro.id == book_id)
-        .options(*_libro_con_relaciones())
+        select(Libro).where(Libro.id == book_id).options(*_libro_con_relaciones())
     )
     if book is None:
         raise NoEncontrado("Libro no encontrado")
@@ -92,7 +92,7 @@ def create_book(data: LibroCreate, db: Session) -> Libro:
 
 
 def patch_book(book_id: int, data: LibroPatch, db: Session) -> Libro:
-    """Actualiza los campos enviados y conserva ejemplares suficientes para préstamos."""
+    """Actualiza campos enviados y conserva ejemplares suficientes para préstamos."""
     book = get_book(book_id, db)
     changes = data.model_dump(exclude_unset=True)
     author_id = changes.get("autor_id", book.autor_id)
@@ -110,9 +110,7 @@ def patch_book(book_id: int, data: LibroPatch, db: Session) -> Libro:
             setattr(book, field, value)
     if category_ids is not None:
         book.categorias = list(
-            db.scalars(
-                select(Categoria).where(Categoria.id.in_(category_ids))
-            ).all()
+            db.scalars(select(Categoria).where(Categoria.id.in_(category_ids))).all()
         )
     active_loans = _active_loan_count(db, book.id)
     if book.ejemplares < active_loans:
@@ -136,9 +134,11 @@ def delete_book(book_id: int, db: Session) -> None:
 
 def _active_loan_count(db: Session, book_id: int) -> int:
     """Cuenta préstamos todavía no devueltos para un libro."""
-    return db.query(Prestamo).filter(
-        Prestamo.libro_id == book_id, Prestamo.fecha_devolucion.is_(None)
-    ).count()
+    return (
+        db.query(Prestamo)
+        .filter(Prestamo.libro_id == book_id, Prestamo.fecha_devolucion.is_(None))
+        .count()
+    )
 
 
 def _validate_author_and_categories(
@@ -155,8 +155,7 @@ def _validate_author_and_categories(
     missing_ids = set(category_ids) - found_ids
     if missing_ids:
         raise NoEncontrado(
-            "Categorías no encontradas: "
-            + ", ".join(map(str, sorted(missing_ids)))
+            "Categorías no encontradas: " + ", ".join(map(str, sorted(missing_ids)))
         )
 
 

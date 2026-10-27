@@ -39,9 +39,7 @@ def create_category(data: CategoriaCreate, db: Session) -> Categoria:
     return category
 
 
-def patch_category(
-    category_id: int, data: CategoriaPatch, db: Session
-) -> Categoria:
+def patch_category(category_id: int, data: CategoriaPatch, db: Session) -> Categoria:
     """Actualiza los campos enviados y conserva la unicidad del nombre."""
     category = get_category(category_id, db)
     changes = data.model_dump(exclude_unset=True)

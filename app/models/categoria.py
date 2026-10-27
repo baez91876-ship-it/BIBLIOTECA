@@ -1,9 +1,14 @@
 """Modelo ORM de categorías y asociación con los libros."""
 
+from typing import TYPE_CHECKING
+
 from sqlalchemy import Column, ForeignKey, Integer, String, Table
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from ..core.database import Base
+
+if TYPE_CHECKING:
+    from .libro import Libro
 
 
 libro_categoria = Table(

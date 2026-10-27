@@ -14,9 +14,7 @@ PaginationQuery = Annotated[Pagination, Depends(get_pagination)]
 
 
 @router.get("", response_model=list[CategoriaRead])
-def listar_categorias(
-    db: SessionDep, pagination: PaginationQuery
-) -> list[Categoria]:
+def listar_categorias(db: SessionDep, pagination: PaginationQuery) -> list[Categoria]:
     """Devuelve la página solicitada de categorías."""
     return categories.list_categories(db, pagination)
 

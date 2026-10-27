@@ -108,20 +108,29 @@ cachés se excluyen de Git. No guardes credenciales reales en los ejemplos.
 ## Estructura
 
 ```text
-app/
-├── controllers/  # Consultas y reglas de negocio
-├── core/         # Base de datos, dependencias y excepciones
-├── models/       # Modelos SQLAlchemy
-├── routes/       # Endpoints FastAPI
-├── schemas/      # Validación y respuestas Pydantic
-└── main.py       # Aplicación, routers y manejador de errores
-docs/             # GitHub Pages: interfaz y catálogo estático
-├── static/       # JavaScript y estilos del sitio
-├── index.html
-├── api-config.js
-└── catalogo.json
-docker/           # Dockerfile, Compose y ejemplos de entorno
-test_main.py      # Pruebas de API e interfaz
+.
+├── app/
+│   ├── controllers/  # Consultas y reglas de negocio
+│   ├── core/         # Base de datos, dependencias y excepciones
+│   ├── models/       # Modelos y relaciones SQLAlchemy
+│   ├── routes/       # Endpoints FastAPI
+│   ├── schemas/      # Validación y respuestas Pydantic
+│   └── main.py       # Aplicación, routers y recursos web
+├── docs/             # GitHub Pages: interfaz y catálogo estático
+│   ├── static/       # JavaScript y estilos
+│   ├── api-config.js  # Configuración de la API para la interfaz
+│   ├── catalogo.json  # Catálogo estático de respaldo
+│   └── index.html     # Página principal
+├── docker/           # Dockerfile, Compose y ejemplo de entorno
+├── scripts/
+│   └── dev.js        # Lanzador npm para Uvicorn
+├── .env.example      # Plantilla de configuración local
+├── package.json      # Comandos npm (sin dependencias Node)
+├── requirements.txt  # Dependencias de ejecución Python
+├── requirements-dev.txt
+│                     # Dependencias para pruebas
+├── test_main.py      # Pruebas API, interfaz y reglas de aceptación
+└── README.md
 ```
 
 ## Recursos y endpoints

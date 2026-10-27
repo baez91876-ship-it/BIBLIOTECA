@@ -157,9 +157,15 @@ class BibliotecaApiTests(unittest.TestCase):
         )
         # 2. ISBN must contain exactly 13 digits.
         invalid_isbn = {**books[0], "isbn": "123"}
-        self.assertEqual(self.client.post("/libros", json=invalid_isbn).status_code, 422)
+        self.assertEqual(
+            self.client.post("/libros", json=invalid_isbn).status_code, 422
+        )
         # 3. Repeated category IDs are rejected.
-        duplicate_categories = {**books[0], "isbn": "9780307474000", "categoria_ids": [1, 1]}
+        duplicate_categories = {
+            **books[0],
+            "isbn": "9780307474000",
+            "categoria_ids": [1, 1],
+        }
         self.assertEqual(
             self.client.post("/libros", json=duplicate_categories).status_code, 422
         )
@@ -171,7 +177,9 @@ class BibliotecaApiTests(unittest.TestCase):
         # 5. Category and order filters can be combined.
         filtered = self.client.get("/libros?categoria_id=2&orden=-anio").json()
         self.assertEqual(len(filtered), 2)
-        self.assertGreaterEqual(filtered[0]["anio_publicacion"], filtered[1]["anio_publicacion"])
+        self.assertGreaterEqual(
+            filtered[0]["anio_publicacion"], filtered[1]["anio_publicacion"]
+        )
         # 6. Author substring filter joins authors.
         self.assertEqual(len(self.client.get("/libros?autor=gabriel").json()), 2)
         # 7. First member borrows the only copy of book 2.
@@ -283,9 +291,7 @@ class BibliotecaApiTests(unittest.TestCase):
         self.assertLessEqual(len(top_books), 3)
         self.assertEqual(
             [row["total_prestamos"] for row in top_books],
-            sorted(
-                (row["total_prestamos"] for row in top_books), reverse=True
-            ),
+            sorted((row["total_prestamos"] for row in top_books), reverse=True),
         )
         self.assertEqual(
             self.client.get("/reportes/libros-mas-prestados?limite=3").json(),
@@ -296,8 +302,7 @@ class BibliotecaApiTests(unittest.TestCase):
         second_page = self.client.get("/libros?skip=2&limit=2").json()
         self.assertEqual((len(first_page), len(second_page)), (2, 2))
         self.assertFalse(
-            {book["id"] for book in first_page}
-            & {book["id"] for book in second_page}
+            {book["id"] for book in first_page} & {book["id"] for book in second_page}
         )
 
         self.assertEqual(len(created_books), 4)
@@ -368,9 +373,7 @@ class BibliotecaApiTests(unittest.TestCase):
             response = self.client.post("/libros", json=book)
             self.assertEqual(response.status_code, 201)
         members = [
-            self.client.post(
-                "/socios", json={"nombre": name, "email": email}
-            ).json()
+            self.client.post("/socios", json={"nombre": name, "email": email}).json()
             for name, email in (
                 ("Ana Torres", "ana@example.com"),
                 ("Luis Pérez", "luis@example.com"),
@@ -386,9 +389,7 @@ class BibliotecaApiTests(unittest.TestCase):
         )
         # 2. Invalid ISBN is rejected.
         self.assertEqual(
-            self.client.post(
-                "/libros", json={**books[0], "isbn": "123"}
-            ).status_code,
+            self.client.post("/libros", json={**books[0], "isbn": "123"}).status_code,
             422,
         )
         # 3. Duplicate category IDs are rejected.
@@ -413,9 +414,7 @@ class BibliotecaApiTests(unittest.TestCase):
         )
         # 5. Category and descending-year filters return the expected books.
         filtered = self.client.get("/libros?categoria_id=2&orden=-anio").json()
-        self.assertEqual(
-            [book["anio_publicacion"] for book in filtered], [1982, 1967]
-        )
+        self.assertEqual([book["anio_publicacion"] for book in filtered], [1982, 1967])
         # 6. Author substring filter returns both books by García Márquez.
         self.assertEqual(len(self.client.get("/libros?autor=gabriel").json()), 2)
         # 7. The first member can borrow book 2.
@@ -434,9 +433,7 @@ class BibliotecaApiTests(unittest.TestCase):
             422,
         )
         # 9. No copies remain available for book 2.
-        self.assertEqual(
-            self.client.get("/libros/2").json()["disponibles"], 0
-        )
+        self.assertEqual(self.client.get("/libros/2").json()["disponibles"], 0)
         # 10. A loan from 20 days ago with a 7-day term is overdue.
         overdue = self.client.post(
             "/prestamos",
@@ -487,9 +484,7 @@ class BibliotecaApiTests(unittest.TestCase):
         )
         self.assertIsInstance(isbn_error["msg"], str)
 
-        created_category = self.client.post(
-            "/categorias", json={"nombre": "Pruebas"}
-        )
+        created_category = self.client.post("/categorias", json={"nombre": "Pruebas"})
         self.assertEqual(created_category.status_code, 201)
         deleted_category = self.client.delete(
             f"/categorias/{created_category.json()['id']}"
@@ -547,7 +542,8 @@ class BibliotecaApiTests(unittest.TestCase):
         )
         self.assertTrue(
             referenced_ids <= page.element_ids,
-            f"Selectores sin elemento HTML: {sorted(referenced_ids - page.element_ids)}",
+            "Selectores sin elemento HTML: "
+            f"{sorted(referenced_ids - page.element_ids)}",
         )
         self.assertTrue(
             {
@@ -558,7 +554,8 @@ class BibliotecaApiTests(unittest.TestCase):
                 "book-list",
                 "management-list",
                 "record-fields",
-            } <= page.element_ids
+            }
+            <= page.element_ids
         )
         self.assertEqual(self.client.get("/docs").status_code, 200)
         documented_paths = self.client.get("/openapi.json").json()["paths"]
@@ -610,9 +607,7 @@ class BibliotecaApiTests(unittest.TestCase):
 
     def test_categorias_duplicadas_y_categoria_se_elimina_de_libros(self):
         """Protege nombres únicos y elimina asociaciones sin borrar los libros."""
-        author = self.client.post(
-            "/autores", json={"nombre": "Autor de prueba"}
-        ).json()
+        author = self.client.post("/autores", json={"nombre": "Autor de prueba"}).json()
         first = self.client.post("/categorias", json={"nombre": "Ficción"}).json()
         conflict = self.client.post("/categorias", json={"nombre": "FICCIÓN"})
         self.assertEqual(conflict.status_code, 409)
@@ -627,17 +622,19 @@ class BibliotecaApiTests(unittest.TestCase):
                 "categoria_ids": [first["id"]],
             },
         ).json()
-        self.assertEqual(self.client.delete(f"/categorias/{first['id']}").status_code, 204)
-        self.assertEqual(self.client.get(f"/libros/{book['id']}").json()["categorias"], [])
+        self.assertEqual(
+            self.client.delete(f"/categorias/{first['id']}").status_code, 204
+        )
+        self.assertEqual(
+            self.client.get(f"/libros/{book['id']}").json()["categorias"], []
+        )
 
     def test_prestamos_abiertos_se_pueden_editar_y_eliminar(self):
         """Permite modificar o borrar préstamos abiertos, nunca los devueltos."""
         author = self.client.post(
             "/autores", json={"nombre": "Autora de préstamos"}
         ).json()
-        category = self.client.post(
-            "/categorias", json={"nombre": "Aventura"}
-        ).json()
+        category = self.client.post("/categorias", json={"nombre": "Aventura"}).json()
         book = self.client.post(
             "/libros",
             json={
@@ -650,9 +647,7 @@ class BibliotecaApiTests(unittest.TestCase):
             },
         ).json()
         members = [
-            self.client.post(
-                "/socios", json={"nombre": name, "email": email}
-            ).json()
+            self.client.post("/socios", json={"nombre": name, "email": email}).json()
             for name, email in (
                 ("Socio Uno", "socio1@example.com"),
                 ("Socio Dos", "socio2@example.com"),

@@ -2,11 +2,16 @@
 
 from datetime import date
 from decimal import Decimal
+from typing import TYPE_CHECKING
 
 from sqlalchemy import Date, ForeignKey, Integer, Numeric, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from ..core.database import Base
+
+if TYPE_CHECKING:
+    from .libro import Libro
+    from .socio import Socio
 
 
 class Prestamo(Base):
@@ -27,7 +32,7 @@ class Prestamo(Base):
     fecha_limite: Mapped[date] = mapped_column(Date, nullable=False)
     fecha_devolucion: Mapped[date | None] = mapped_column(Date)
     multa: Mapped[Decimal] = mapped_column(
-        Numeric(10, 2), nullable=False, default=Decimal("0"), server_default="0"
+        Numeric(10, 2), nullable=False, default=Decimal(0), server_default="0"
     )
 
     libro: Mapped["Libro"] = relationship(back_populates="prestamos")

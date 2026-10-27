@@ -39,25 +39,19 @@ def libros_mas_prestados(
 
 
 @router.get("/categorias", response_model=list[CategoriaReporte])
-def reporte_categorias(
-    db: SessionDep, pagination: PaginationDep
-) -> list[dict]:
+def reporte_categorias(db: SessionDep, pagination: PaginationDep) -> list[dict]:
     """Devuelve el total de libros registrado por categoría."""
     return reports.books_by_category(db, pagination)
 
 
 @router.get("/prestamos-vencidos", response_model=list[PrestamoVencido])
-def reporte_prestamos_vencidos(
-    db: SessionDep, pagination: PaginationDep
-) -> list[dict]:
+def reporte_prestamos_vencidos(db: SessionDep, pagination: PaginationDep) -> list[dict]:
     """Devuelve los préstamos vencidos y sus días de retraso."""
     return reports.overdue_loans(db, pagination)
 
 
 @router.get("/socios-con-multas", response_model=list[SocioMultas])
-def reporte_socios_con_multas(
-    db: SessionDep, pagination: PaginationDep
-) -> list[dict]:
+def reporte_socios_con_multas(db: SessionDep, pagination: PaginationDep) -> list[dict]:
     """Devuelve socios con multas acumuladas."""
     return reports.members_with_fines(db, pagination)
 

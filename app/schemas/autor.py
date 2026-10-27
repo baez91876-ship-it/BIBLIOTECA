@@ -12,9 +12,7 @@ class AutorCreate(BaseModel):
 
     nombre: str = Field(min_length=2, max_length=100)
     nacionalidad: str | None = Field(default=None, max_length=60)
-    anio_nacimiento: int | None = Field(
-        default=None, ge=1000, le=date.today().year
-    )
+    anio_nacimiento: int | None = Field(default=None, ge=1000, le=date.today().year)
 
     @field_validator("nombre")
     @classmethod
@@ -34,9 +32,7 @@ class AutorPatch(AutorCreate):
 
     nombre: str | None = Field(default=None, min_length=2, max_length=100)
     nacionalidad: str | None = Field(default=None, max_length=60)
-    anio_nacimiento: int | None = Field(
-        default=None, ge=1000, le=date.today().year
-    )
+    anio_nacimiento: int | None = Field(default=None, ge=1000, le=date.today().year)
 
     @field_validator("nombre")
     @classmethod
