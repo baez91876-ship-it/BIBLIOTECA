@@ -1,3 +1,5 @@
+"""Consultas, filtros y reglas de negocio para libros del catálogo."""
+
 from enum import Enum
 
 from sqlalchemy import select
@@ -11,12 +13,15 @@ from ..schemas.libro import LibroCreate, LibroPatch
 
 
 class OrdenLibro(str, Enum):
+    """Criterios admitidos para ordenar el catálogo."""
+
     titulo = "titulo"
     anio = "anio"
     anio_desc = "-anio"
 
 
 def _libro_con_relaciones():
+    """Carga las relaciones necesarias para serializar un libro sin consultas extra."""
     return selectinload(Libro.autor), selectinload(Libro.categorias), selectinload(
         Libro.prestamos
     )
@@ -32,6 +37,7 @@ def list_books(
     hasta: int | None = None,
     orden: OrdenLibro = OrdenLibro.titulo,
 ) -> list[Libro]:
+    """Combina filtros del catálogo y devuelve una página ordenada."""
     if desde is not None and hasta is not None and desde > hasta:
         raise ReglaNegocio("'desde' no puede ser mayor que 'hasta'")
     query = select(Libro).options(*_libro_con_relaciones())
@@ -58,6 +64,7 @@ def list_books(
 
 
 def get_book(book_id: int, db: Session) -> Libro:
+    """Obtiene un libro con sus relaciones o informa que no existe."""
     book = db.scalar(
         select(Libro)
         .where(Libro.id == book_id)
@@ -69,6 +76,7 @@ def get_book(book_id: int, db: Session) -> Libro:
 
 
 def create_book(data: LibroCreate, db: Session) -> Libro:
+    """Crea un libro tras comprobar el autor, categorías e ISBN."""
     _validate_author_and_categories(db, data.autor_id, data.categoria_ids)
     if db.scalar(select(Libro.id).where(Libro.isbn == data.isbn)):
         raise Conflicto("El ISBN ya está registrado")
@@ -84,6 +92,7 @@ def create_book(data: LibroCreate, db: Session) -> Libro:
 
 
 def patch_book(book_id: int, data: LibroPatch, db: Session) -> Libro:
+    """Actualiza los campos enviados y conserva ejemplares suficientes para préstamos."""
     book = get_book(book_id, db)
     changes = data.model_dump(exclude_unset=True)
     author_id = changes.get("autor_id", book.autor_id)
@@ -115,6 +124,7 @@ def patch_book(book_id: int, data: LibroPatch, db: Session) -> Libro:
 
 
 def delete_book(book_id: int, db: Session) -> None:
+    """Impide borrar libros con préstamos abiertos o historial asociado."""
     book = get_book(book_id, db)
     if _active_loan_count(db, book_id):
         raise Conflicto("No se puede eliminar un libro con préstamos sin devolver")
@@ -125,6 +135,7 @@ def delete_book(book_id: int, db: Session) -> None:
 
 
 def _active_loan_count(db: Session, book_id: int) -> int:
+    """Cuenta préstamos todavía no devueltos para un libro."""
     return db.query(Prestamo).filter(
         Prestamo.libro_id == book_id, Prestamo.fecha_devolucion.is_(None)
     ).count()
@@ -133,6 +144,7 @@ def _active_loan_count(db: Session, book_id: int) -> int:
 def _validate_author_and_categories(
     db: Session, author_id: int, category_ids: list[int]
 ) -> None:
+    """Valida que existan el autor y todas las categorías, sin duplicados."""
     if db.get(Autor, author_id) is None:
         raise NoEncontrado("Autor no encontrado")
     if len(category_ids) != len(set(category_ids)):
@@ -149,6 +161,7 @@ def _validate_author_and_categories(
 
 
 def _commit(db: Session, duplicate_message: str) -> None:
+    """Revierte la transacción y traduce restricciones de unicidad."""
     try:
         db.commit()
     except IntegrityError as exc:

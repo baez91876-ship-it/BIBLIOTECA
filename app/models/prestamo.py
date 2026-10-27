@@ -1,3 +1,5 @@
+"""Modelo ORM de los préstamos y su estado derivado."""
+
 from datetime import date
 from decimal import Decimal
 
@@ -8,6 +10,8 @@ from ..core.database import Base
 
 
 class Prestamo(Base):
+    """Préstamo de un libro a un socio, con fechas e importe de multa."""
+
     __tablename__ = "prestamos"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
@@ -31,6 +35,7 @@ class Prestamo(Base):
 
     @property
     def estado(self) -> str:
+        """Deriva el estado a partir de la devolución y la fecha límite."""
         if self.fecha_devolucion is not None:
             return "devuelto"
         if self.fecha_limite < date.today():

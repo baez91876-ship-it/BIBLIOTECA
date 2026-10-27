@@ -1,3 +1,5 @@
+"""Punto de entrada FastAPI, configuración de rutas y recursos web."""
+
 import logging
 import os
 from contextlib import asynccontextmanager
@@ -21,6 +23,7 @@ FRONTEND_ROOT = PROJECT_ROOT / "docs"
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
+    """Crea las tablas necesarias y valida la conexión y el esquema al iniciar."""
     Base.metadata.create_all(bind=engine)
     with engine.connect() as connection:
         connection.execute(text("SELECT 1"))
@@ -115,11 +118,13 @@ app.include_router(reports.router)
 
 @app.get("/", include_in_schema=False)
 def interfaz():
+    """Entrega la interfaz web de la biblioteca."""
     return FileResponse(FRONTEND_ROOT / "index.html")
 
 
 @app.get("/api-config.js", include_in_schema=False)
 def configuracion_api():
+    """Entrega la configuración JavaScript de la API para la interfaz."""
     return FileResponse(
         FRONTEND_ROOT / "api-config.js",
         media_type="application/javascript",
@@ -128,6 +133,7 @@ def configuracion_api():
 
 @app.get("/catalogo.json", include_in_schema=False)
 def catalogo_estatico():
+    """Entrega la copia estática del catálogo para GitHub Pages."""
     return FileResponse(
         FRONTEND_ROOT / "catalogo.json",
         media_type="application/json",
@@ -136,6 +142,7 @@ def catalogo_estatico():
 
 @app.get("/health", include_in_schema=False)
 def health():
+    """Comprueba que la base conectada sea la base esperada."""
     with engine.connect() as connection:
         database_name = connection.scalar(text("SELECT current_database()"))
         if database_name != "LIBRERIA":
@@ -145,6 +152,7 @@ def health():
 
 @app.exception_handler(ErrorAplicacion)
 async def application_error_handler(_, exc: ErrorAplicacion):
+    """Convierte excepciones de dominio en respuestas JSON con su estado HTTP."""
     from fastapi.responses import JSONResponse
 
     return JSONResponse(

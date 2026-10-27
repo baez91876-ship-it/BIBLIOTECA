@@ -1,3 +1,5 @@
+"""Esquemas de validación y serialización de préstamos."""
+
 from datetime import date
 from enum import Enum
 
@@ -8,12 +10,16 @@ from .socio import SocioRead
 
 
 class EstadoPrestamo(str, Enum):
+    """Estados posibles de un préstamo según sus fechas."""
+
     activo = "activo"
     vencido = "vencido"
     devuelto = "devuelto"
 
 
 class PrestamoCreate(BaseModel):
+    """Datos de entrada para abrir un préstamo."""
+
     libro_id: int = Field(gt=0)
     socio_id: int = Field(gt=0)
     fecha_prestamo: date | None = None
@@ -21,14 +27,20 @@ class PrestamoCreate(BaseModel):
 
 
 class DevolucionCreate(BaseModel):
+    """Fecha efectiva de devolución; hoy se usa si no se especifica."""
+
     fecha_devolucion: date = Field(default_factory=date.today)
 
 
 class PrestamoPatch(BaseModel):
+    """Único dato editable de un préstamo todavía abierto."""
+
     fecha_limite: date
 
 
 class PrestamoRead(BaseModel):
+    """Préstamo de respuesta con el libro, el socio y el estado."""
+
     model_config = ConfigDict(from_attributes=True)
 
     id: int

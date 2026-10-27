@@ -1,3 +1,4 @@
+// Estado de la interfaz y referencias a los elementos principales del DOM.
 const bookList = document.querySelector("#book-list");
 const emptyState = document.querySelector("#empty-state");
 const emptyTitle = document.querySelector("#empty-title");
@@ -27,6 +28,7 @@ const apiBaseUrl = (window.BIBLIOTECA_API_URL || "").replace(/\/+$/, "");
 const pagesApiNotConfigured =
   window.location.hostname.endsWith(".github.io") && !apiBaseUrl;
 
+// Metadatos de tablas y formularios para las pantallas de administración.
 const resources = {
   autores: {
     title: "Autores",
@@ -102,6 +104,7 @@ const resources = {
   },
 };
 
+// GitHub Pages puede servir el catálogo local cuando no se configura una API.
 if (pagesApiNotConfigured) {
   document.querySelector("#connection-label").textContent = "Catálogo estático";
   document.querySelector("#database-label").textContent = "Solo lectura";
@@ -116,18 +119,21 @@ if (pagesApiNotConfigured) {
 }
 
 function showNotice(message) {
+  // Presenta avisos de error o de solo lectura junto a la colección.
   notice.textContent = message;
   notice.classList.toggle("read-only-notice", pagesApiNotConfigured);
   notice.hidden = false;
 }
 
 function hideNotice() {
+  // Limpia el aviso visible para que no persista tras una nueva carga.
   notice.hidden = true;
   notice.textContent = "";
   notice.classList.remove("read-only-notice");
 }
 
 async function apiRequest(path, options = {}) {
+  // Centraliza errores HTTP y evita solicitudes de escritura en Pages estático.
   if (pagesApiNotConfigured) {
     throw new Error(
       "La interfaz está publicada, pero la API aún no está desplegada. Configura su URL en api-config.js.",
@@ -158,6 +164,7 @@ async function apiRequest(path, options = {}) {
 }
 
 async function listAll(path) {
+  // Recorre todas las páginas de 100 registros para cargar colecciones completas.
   const records = [];
   for (let skip = 0; ; skip += 100) {
     const page = await apiRequest(`${path}?skip=${skip}&limit=100`);
@@ -167,6 +174,7 @@ async function listAll(path) {
 }
 
 function createCell(text, className = "") {
+  // Usa textContent para insertar los valores de la API como texto, no como HTML.
   const cell = document.createElement("td");
   if (className) cell.className = className;
   cell.textContent = text ?? "—";
@@ -174,11 +182,13 @@ function createCell(text, className = "") {
 }
 
 function localDateString(date = new Date()) {
+  // Serializa la fecha local sin que la conversión UTC cambie el día.
   const localDate = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
   return localDate.toISOString().slice(0, 10);
 }
 
 function renderBooks() {
+  // Filtra y reconstruye filas y estadísticas de la vista del catálogo.
   const query = searchInput.value.trim().toLocaleLowerCase("es");
   const visibleBooks = books.filter((book) =>
     `${book.titulo} ${book.autor.nombre}`.toLocaleLowerCase("es").includes(query),
@@ -257,6 +267,7 @@ function renderBooks() {
 }
 
 async function loadBooks() {
+  // Carga el catálogo estático o combina los recursos de la API en vivo.
   hideNotice();
   try {
     if (pagesApiNotConfigured) {
@@ -284,6 +295,7 @@ async function loadBooks() {
 }
 
 async function loadResource(resourceName) {
+  // Carga el recurso seleccionado y sus dependencias para los formularios.
   const config = resources[resourceName];
   const managementNotice = document.querySelector("#management-notice");
   managementNotice.hidden = true;
@@ -308,6 +320,7 @@ async function loadResource(resourceName) {
 }
 
 function setView(viewName) {
+  // Sincroniza navegación, vista activa y datos que deben actualizarse.
   activeView = viewName;
   booksView.hidden = viewName !== "libros";
   managementView.hidden = viewName === "libros";
@@ -326,6 +339,7 @@ function setView(viewName) {
 }
 
 function renderManagement(resourceName) {
+  // Genera encabezados, filas, acciones y estado vacío para cada recurso.
   const config = resources[resourceName];
   const records = config.records();
   const query = managementSearch.value.trim().toLocaleLowerCase("es");
@@ -401,6 +415,7 @@ function renderManagement(resourceName) {
 }
 
 function createActionButton(action, id, label, symbol, destructive = false) {
+  // Construye un botón de acción con etiqueta accesible e ID del registro.
   const button = document.createElement("button");
   button.type = "button";
   button.className = `icon-button${destructive ? " delete-button" : ""}`;
@@ -413,6 +428,7 @@ function createActionButton(action, id, label, symbol, destructive = false) {
 }
 
 function openBookDialog(book = null) {
+  // Inicializa el formulario del libro con autores y categorías disponibles.
   editingBookId = book?.id ?? null;
   form.reset();
   document.querySelector("#dialog-title").textContent = book ? "Editar libro" : "Añadir libro";
@@ -443,6 +459,7 @@ function openBookDialog(book = null) {
 }
 
 function openRecordDialog(record = null) {
+  // Genera campos dinámicos según el recurso y el modo de creación o edición.
   const config = resources[activeView];
   activeRecordId = record?.id ?? null;
   const fields = activeRecordId !== null && config.editFields
@@ -492,6 +509,7 @@ function openRecordDialog(record = null) {
 }
 
 function buildRecordPayload(fields) {
+  // Convierte los valores de formulario a los tipos que espera la API.
   const payload = {};
   for (const field of fields) {
     const value = document.querySelector(`#record-${field.name}`).value.trim();
@@ -507,6 +525,7 @@ function buildRecordPayload(fields) {
   return payload;
 }
 
+// Enlaces de la vista de libros y envío de su formulario.
 document.querySelector("#add-book").addEventListener("click", () => openBookDialog());
 document.querySelector("#empty-add-book").addEventListener("click", () => openBookDialog());
 document.querySelector("#close-dialog").addEventListener("click", () => dialog.close());
@@ -515,6 +534,7 @@ document.querySelector("#refresh-books").addEventListener("click", loadBooks);
 searchInput.addEventListener("input", renderBooks);
 
 form.addEventListener("submit", async (event) => {
+  // Envía el libro nuevo o actualizado y mantiene el error en el diálogo.
   event.preventDefault();
   const saveButton = document.querySelector("#save-book");
   const errorMessage = document.querySelector("#form-error");
@@ -548,6 +568,7 @@ form.addEventListener("submit", async (event) => {
 });
 
 bookList.addEventListener("click", async (event) => {
+  // Delegación de acciones para editar o eliminar filas del catálogo.
   const button = event.target.closest("button[data-action]");
   if (!button) return;
   const book = books.find((item) => item.id === Number(button.dataset.id));
@@ -567,6 +588,7 @@ bookList.addEventListener("click", async (event) => {
   }
 });
 
+// Navegación y eventos compartidos de las pantallas de administración.
 document.querySelectorAll(".nav-link[data-view]").forEach((link) => {
   link.addEventListener("click", () => setView(link.dataset.view));
 });
@@ -577,6 +599,7 @@ document.querySelector("#close-record-dialog").addEventListener("click", () => r
 document.querySelector("#cancel-record-dialog").addEventListener("click", () => recordDialog.close());
 
 recordForm.addEventListener("submit", async (event) => {
+  // Guarda altas y cambios de los recursos administrados desde el formulario dinámico.
   event.preventDefault();
   const config = resources[activeView];
   const fields = activeRecordId !== null && config.editFields ? config.editFields : config.fields;
@@ -602,6 +625,7 @@ recordForm.addEventListener("submit", async (event) => {
 });
 
 managementList.addEventListener("click", async (event) => {
+  // Aplica las acciones de edición, eliminación o devolución sobre la fila elegida.
   const button = event.target.closest("button[data-action]");
   if (!button) return;
   const config = resources[activeView];

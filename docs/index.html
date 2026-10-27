@@ -1,6 +1,7 @@
 <!doctype html>
 <html lang="es">
 <head>
+  <!-- Recursos y configuración de la interfaz estática servida desde docs/. -->
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#f7f5f0">
@@ -10,6 +11,7 @@
   <script src="static/app.js?v=docs-swagger" defer></script>
 </head>
 <body>
+  <!-- Navegación lateral y contenido principal de la biblioteca. -->
   <div class="app-shell">
     <aside class="sidebar">
       <a class="brand" href="./" aria-label="Inicio Biblioteca">
@@ -45,6 +47,7 @@
         <span class="database-badge"><span class="status-dot"></span> <span id="database-label">PostgreSQL · LIBRERIA</span></span>
       </header>
 
+        <!-- Catálogo, resumen, búsqueda y documentación interactiva de la API. -->
         <div id="books-view">
         <section class="page-heading">
         <div>
@@ -142,6 +145,7 @@
       </details>
       </div>
 
+      <!-- Tablas y formularios dinámicos de autores, categorías, socios y préstamos. -->
       <section id="management-view" hidden>
         <div class="page-heading">
           <div>
@@ -187,6 +191,7 @@
     </main>
   </div>
 
+  <!-- Formularios modales para libros y para los demás recursos administrables. -->
   <dialog class="book-dialog" id="book-dialog" aria-labelledby="dialog-title">
     <form id="book-form">
       <div class="dialog-heading">

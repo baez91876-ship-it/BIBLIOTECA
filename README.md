@@ -6,6 +6,7 @@ categorías, libros, socios, préstamos y reportes.
 ## Requisitos
 
 - Python 3.13 o superior
+- Node.js y npm
 - PostgreSQL y una base de datos `LIBRERIA`
 - Docker Desktop (opcional)
 
@@ -22,13 +23,14 @@ el nombre de la base y no permite conectarse a otro motor o base de datos.
 Usa una base vacía con permisos para crear las tablas. Las tablas antiguas no
 se migran ni se eliminan automáticamente.
 
-Inicia la API desde la raíz (el comando detecta la mayúscula de la carpeta en
-el checkout local):
+Inicia la aplicación desde la raíz:
 
 ```powershell
-$package = if (Test-Path app) { "app" } else { "APP" }
-.venv\Scripts\python.exe -m uvicorn "$package.main:app" --reload
+npm run dev
 ```
+
+El comando usa automáticamente el Python de `.venv` si existe; de lo contrario,
+usa Python del `PATH`. No requiere `npm install`.
 
 La interfaz está en <http://127.0.0.1:8000/>, Swagger en
 <http://127.0.0.1:8000/docs> y ReDoc en <http://127.0.0.1:8000/redoc>.

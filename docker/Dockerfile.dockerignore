@@ -1,3 +1,4 @@
+# Excluye configuración local, entornos, datos de prueba y metadatos Git.
 **/.env
 **/.env.*
 .venv

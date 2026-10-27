@@ -1,3 +1,5 @@
+"""Modelos ORM y tabla de asociación usados por la aplicación."""
+
 from .autor import Autor
 from .categoria import Categoria, libro_categoria
 from .libro import Libro

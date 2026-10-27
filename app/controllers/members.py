@@ -1,3 +1,5 @@
+"""Consultas y reglas de negocio para socios y su historial de préstamos."""
+
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, joinedload
@@ -12,6 +14,7 @@ from ..schemas.socio import SocioCreate, SocioPatch
 def list_members(
     db: Session, pagination: Pagination, activo: bool | None = None
 ) -> list[Socio]:
+    """Lista socios en orden estable y permite filtrar por estado."""
     query = select(Socio).order_by(Socio.nombre, Socio.id)
     if activo is not None:
         query = query.where(Socio.activo.is_(activo))
@@ -19,6 +22,7 @@ def list_members(
 
 
 def get_member(member_id: int, db: Session) -> Socio:
+    """Obtiene un socio o informa que no existe."""
     member = db.get(Socio, member_id)
     if member is None:
         raise NoEncontrado("Socio no encontrado")
@@ -26,6 +30,7 @@ def get_member(member_id: int, db: Session) -> Socio:
 
 
 def create_member(data: SocioCreate, db: Session) -> Socio:
+    """Crea un socio normalizando y protegiendo su correo electrónico."""
     if db.scalar(select(Socio.id).where(Socio.email == str(data.email).lower())):
         raise Conflicto("El correo electrónico ya está registrado")
     member = Socio(**data.model_dump())
@@ -36,6 +41,7 @@ def create_member(data: SocioCreate, db: Session) -> Socio:
 
 
 def patch_member(member_id: int, data: SocioPatch, db: Session) -> Socio:
+    """Actualiza los campos enviados y garantiza que el correo no se repita."""
     member = get_member(member_id, db)
     changes = data.model_dump(exclude_unset=True)
     email = changes.get("email")
@@ -53,6 +59,7 @@ def patch_member(member_id: int, data: SocioPatch, db: Session) -> Socio:
 
 
 def delete_member(member_id: int, db: Session) -> None:
+    """Impide borrar préstamos abiertos y conserva como inactivo el historial."""
     member = get_member(member_id, db)
     active_loan = db.scalar(
         select(Prestamo.id).where(
@@ -78,6 +85,7 @@ def list_member_loans(
     pagination: Pagination,
     estado: EstadoPrestamo | None,
 ) -> list[Prestamo]:
+    """Lista el historial de un socio, opcionalmente filtrado por estado."""
     get_member(member_id, db)
     query = select(Prestamo).where(Prestamo.socio_id == member_id)
     query = query.options(
@@ -95,6 +103,7 @@ def list_member_loans(
 
 
 def _filter_state(query, estado: EstadoPrestamo | None):
+    """Añade al query las condiciones de estado vigentes según la fecha actual."""
     from datetime import date
 
     if estado == EstadoPrestamo.devuelto:
@@ -111,6 +120,7 @@ def _filter_state(query, estado: EstadoPrestamo | None):
 
 
 def _commit(db: Session) -> None:
+    """Revierte la transacción y traduce correos duplicados a conflicto."""
     try:
         db.commit()
     except IntegrityError as exc:

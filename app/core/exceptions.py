@@ -1,4 +1,9 @@
+"""Excepciones de dominio traducidas a respuestas HTTP por FastAPI."""
+
+
 class ErrorAplicacion(Exception):
+    """Error de aplicación con el código HTTP que debe devolver la API."""
+
     status_code = 400
 
     def __init__(self, detail: str):
@@ -7,12 +12,18 @@ class ErrorAplicacion(Exception):
 
 
 class NoEncontrado(ErrorAplicacion):
+    """Indica que el recurso solicitado no existe."""
+
     status_code = 404
 
 
 class Conflicto(ErrorAplicacion):
+    """Indica que la operación entra en conflicto con el estado actual."""
+
     status_code = 409
 
 
 class ReglaNegocio(ErrorAplicacion):
+    """Indica que la solicitud incumple una regla de negocio."""
+
     status_code = 422

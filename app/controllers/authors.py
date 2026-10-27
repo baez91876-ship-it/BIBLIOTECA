@@ -1,3 +1,5 @@
+"""Consultas y reglas de negocio para autores y sus libros."""
+
 from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
@@ -10,6 +12,7 @@ from ..schemas.autor import AutorCreate, AutorPatch
 def list_authors(
     db: Session, pagination: Pagination, nacionalidad: str | None = None
 ) -> list[Autor]:
+    """Lista autores en orden estable y filtra opcionalmente por nacionalidad."""
     query = select(Autor).order_by(Autor.nombre, Autor.id)
     if nacionalidad:
         query = query.where(Autor.nacionalidad.ilike(f"%{nacionalidad.strip()}%"))
@@ -17,6 +20,7 @@ def list_authors(
 
 
 def get_author(author_id: int, db: Session) -> Autor:
+    """Obtiene un autor o informa que no existe."""
     author = db.get(Autor, author_id)
     if author is None:
         raise NoEncontrado("Autor no encontrado")
@@ -24,6 +28,7 @@ def get_author(author_id: int, db: Session) -> Autor:
 
 
 def list_author_books(author_id: int, db: Session, pagination: Pagination):
+    """Lista los libros de un autor después de validar que exista."""
     get_author(author_id, db)
     return db.scalars(
         select(Libro)
@@ -40,6 +45,7 @@ def list_author_books(author_id: int, db: Session, pagination: Pagination):
 
 
 def create_author(data: AutorCreate, db: Session) -> Autor:
+    """Crea un autor y traduce conflictos de unicidad a un error de dominio."""
     if db.scalar(select(Autor.id).where(Autor.nombre == data.nombre)):
         raise Conflicto("El autor ya existe")
     author = Autor(**data.model_dump())
@@ -50,6 +56,7 @@ def create_author(data: AutorCreate, db: Session) -> Autor:
 
 
 def patch_author(author_id: int, data: AutorPatch, db: Session) -> Autor:
+    """Actualiza solo los campos enviados y protege la unicidad del nombre."""
     author = get_author(author_id, db)
     changes = data.model_dump(exclude_unset=True)
     if "nombre" in changes and changes["nombre"] is not None:
@@ -68,6 +75,7 @@ def patch_author(author_id: int, data: AutorPatch, db: Session) -> Autor:
 
 
 def delete_author(author_id: int, db: Session) -> None:
+    """Elimina un autor únicamente si no tiene libros asociados."""
     author = get_author(author_id, db)
     if author.libros:
         raise Conflicto("No se puede eliminar un autor que tiene libros")
@@ -76,6 +84,7 @@ def delete_author(author_id: int, db: Session) -> None:
 
 
 def _commit(db: Session, duplicate_message: str) -> None:
+    """Revierte la transacción y traduce restricciones de unicidad."""
     from sqlalchemy.exc import IntegrityError
 
     try:

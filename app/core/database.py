@@ -1,3 +1,5 @@
+"""Configuración de PostgreSQL y sesiones de SQLAlchemy."""
+
 import os
 
 from dotenv import load_dotenv
@@ -27,10 +29,13 @@ SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False)
 
 
 class Base(DeclarativeBase):
+    """Clase base para registrar los modelos ORM de la aplicación."""
+
     pass
 
 
 def get_db():
+    """Proporciona una sesión por solicitud y la cierra al terminar."""
     db = SessionLocal()
     try:
         yield db

@@ -1,9 +1,12 @@
+# Dependencias de la API, validación de datos y consultas.
 requests==2.34.2
 rich==15.0.0
 fastapi==0.143.0
 uvicorn==0.54.0
 pydantic==2.14.1
 email-validator==2.3.0
+
+# Acceso a PostgreSQL y carga de configuración local.
 SQLAlchemy==2.1.4
 psycopg[binary]==3.3.6
 python-dotenv==1.2.4

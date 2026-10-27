@@ -1,5 +1,6 @@
 name: libreria
 
+# PostgreSQL se publica solo en localhost para no exponer la base de datos.
 services:
   db:
     image: postgres:17-alpine
@@ -29,9 +30,11 @@ services:
     ports:
       - "127.0.0.1:8001:8000"
     depends_on:
+      # Evita iniciar la API antes de que PostgreSQL acepte conexiones.
       db:
         condition: service_healthy
 
 volumes:
+  # Conserva los datos de la biblioteca entre reinicios de los contenedores.
   libreria_data:
     name: libreria_libreria_data

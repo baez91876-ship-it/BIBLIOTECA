@@ -43,3 +43,4 @@ __all__ = [
     "AutorReporte",
     "ResumenReporte",
 ]
+"""Esquemas Pydantic para validar solicitudes y respuestas de la API."""

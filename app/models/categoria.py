@@ -1,3 +1,5 @@
+"""Modelo ORM de categorías y asociación con los libros."""
+
 from sqlalchemy import Column, ForeignKey, Integer, String, Table
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -5,6 +7,7 @@ from ..core.database import Base
 
 
 libro_categoria = Table(
+    # La clave compuesta impide asociar dos veces el mismo libro y categoría.
     "libro_categoria",
     Base.metadata,
     Column("libro_id", ForeignKey("libros.id", ondelete="CASCADE"), primary_key=True),
@@ -17,6 +20,8 @@ libro_categoria = Table(
 
 
 class Categoria(Base):
+    """Categoría temática asignable a varios libros."""
+
     __tablename__ = "categorias"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)

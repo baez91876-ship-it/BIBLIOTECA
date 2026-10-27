@@ -1,5 +1,9 @@
+"""Pruebas de aceptación de la API usando SQLite aislado en memoria."""
+
+import re
 import unittest
 from datetime import date, timedelta
+from html.parser import HTMLParser
 from importlib import import_module, util
 
 from fastapi.testclient import TestClient
@@ -15,8 +19,33 @@ get_db = database.get_db
 app = app_module.app
 
 
+class PageStructureParser(HTMLParser):
+    """Recopila IDs y recursos HTML para validar el contrato de la interfaz."""
+
+    def __init__(self):
+        super().__init__()
+        self.element_ids: set[str] = set()
+        self.assets: set[str] = set()
+        self.views: set[str] = set()
+
+    def handle_starttag(self, tag, attrs):
+        """Registra identificadores, recursos y vistas declaradas en cada etiqueta."""
+        attributes = dict(attrs)
+        if element_id := attributes.get("id"):
+            self.element_ids.add(element_id)
+        for attribute in ("src", "href"):
+            value = attributes.get(attribute, "")
+            if value.startswith(("static/", "api-config.js")):
+                self.assets.add(value.split("?", maxsplit=1)[0])
+        if tag == "button" and (view := attributes.get("data-view")):
+            self.views.add(view)
+
+
 class BibliotecaApiTests(unittest.TestCase):
+    """Ejecuta cada caso con una base temporal y cliente FastAPI aislado."""
+
     def setUp(self):
+        """Crea el esquema SQLite y sustituye la dependencia de base de datos."""
         self.engine = create_engine(
             "sqlite://",
             connect_args={"check_same_thread": False},
@@ -28,6 +57,7 @@ class BibliotecaApiTests(unittest.TestCase):
         )
 
         def override_get_db():
+            """Abre y cierra una sesión de prueba por solicitud HTTP."""
             session = self.session_factory()
             try:
                 yield session
@@ -38,11 +68,13 @@ class BibliotecaApiTests(unittest.TestCase):
         self.client = TestClient(app)
 
     def tearDown(self):
+        """Libera el cliente, los overrides y el motor de prueba."""
         self.client.close()
         app.dependency_overrides.clear()
         self.engine.dispose()
 
     def test_24_casos_de_aceptacion_del_taller(self):
+        """Comprueba reglas funcionales de catálogo, préstamos y reportes."""
         author_names = [
             ("Gabriel García Márquez", "Colombiana", 1927),
             ("Isabel Allende", "Chilena", 1942),
@@ -268,31 +300,78 @@ class BibliotecaApiTests(unittest.TestCase):
         self.assertEqual(self.client.get("/reportes/resumen").status_code, 200)
 
     def test_validaciones_de_paginacion(self):
+        """Rechaza límites de paginación fuera del rango permitido."""
         self.assertEqual(self.client.get("/libros?skip=-1").status_code, 422)
         self.assertEqual(self.client.get("/libros?limit=0").status_code, 422)
         self.assertEqual(self.client.get("/libros?limit=101").status_code, 422)
 
     def test_interfaz_y_activos_en_rutas_de_pages(self):
+        """Verifica la interfaz, Swagger y los recursos estáticos publicados."""
         response = self.client.get("/")
         self.assertEqual(response.status_code, 200)
-        self.assertIn('href="static/styles.css', response.text)
-        self.assertIn('src="api-config.js', response.text)
-        self.assertIn('id="api-docs-frame"', response.text)
+        page = PageStructureParser()
+        page.feed(response.text)
+        self.assertEqual(
+            page.views, {"libros", "autores", "categorias", "socios", "prestamos"}
+        )
+        self.assertEqual(
+            page.assets,
+            {"static/styles.css", "api-config.js", "static/app.js"},
+        )
+        app_script = self.client.get("/static/app.js")
+        self.assertEqual(app_script.status_code, 200)
+        referenced_ids = set(
+            re.findall(
+                r"""querySelector(?:All)?\(["']#([\w-]+)""",
+                app_script.text,
+            )
+        )
+        self.assertTrue(
+            referenced_ids <= page.element_ids,
+            f"Selectores sin elemento HTML: {sorted(referenced_ids - page.element_ids)}",
+        )
+        self.assertTrue(
+            {
+                "books-view",
+                "management-view",
+                "book-dialog",
+                "record-dialog",
+                "book-list",
+                "management-list",
+                "record-fields",
+            } <= page.element_ids
+        )
         self.assertEqual(self.client.get("/docs").status_code, 200)
         documented_paths = self.client.get("/openapi.json").json()["paths"]
         self.assertIn("/reportes/resumen", documented_paths)
-        for view in ("libros", "autores", "categorias", "socios", "prestamos"):
-            self.assertIn(f'data-view="{view}"', response.text)
-        self.assertIn('id="record-fields" class="record-dialog-fields"', response.text)
-        self.assertEqual(self.client.get("/api-config.js").status_code, 200)
+        self.assertEqual(
+            self.client.get("/static/styles.css").status_code,
+            200,
+        )
+        self.assertEqual(
+            self.client.get("/api-config.js").headers["content-type"],
+            "application/javascript",
+        )
         catalog = self.client.get("/catalogo.json")
         self.assertEqual(catalog.status_code, 200)
-        self.assertEqual(len(catalog.json()["autores"]), 40)
-        self.assertEqual(len(catalog.json()["libros"]), 41)
-        self.assertEqual(self.client.get("/static/app.js").status_code, 200)
-        self.assertEqual(self.client.get("/static/styles.css").status_code, 200)
+        catalog_data = catalog.json()
+        self.assertEqual(len(catalog_data["autores"]), 40)
+        self.assertEqual(len(catalog_data["libros"]), 41)
+        author_ids = {author["id"] for author in catalog_data["autores"]}
+        category_ids = {category["id"] for category in catalog_data["categorias"]}
+        self.assertTrue(
+            all(book["autor"]["id"] in author_ids for book in catalog_data["libros"])
+        )
+        self.assertTrue(
+            all(
+                category["id"] in category_ids
+                for book in catalog_data["libros"]
+                for category in book["categorias"]
+            )
+        )
 
     def test_patch_rechaza_nulos_en_campos_requeridos(self):
+        """Impide anular campos obligatorios mediante actualizaciones parciales."""
         self.assertEqual(
             self.client.patch("/autores/1", json={"nombre": None}).status_code,
             422,
@@ -311,6 +390,7 @@ class BibliotecaApiTests(unittest.TestCase):
         )
 
     def test_categorias_duplicadas_y_categoria_se_elimina_de_libros(self):
+        """Protege nombres únicos y elimina asociaciones sin borrar los libros."""
         author = self.client.post(
             "/autores", json={"nombre": "Autor de prueba"}
         ).json()
@@ -332,6 +412,7 @@ class BibliotecaApiTests(unittest.TestCase):
         self.assertEqual(self.client.get(f"/libros/{book['id']}").json()["categorias"], [])
 
     def test_prestamos_abiertos_se_pueden_editar_y_eliminar(self):
+        """Permite modificar o borrar préstamos abiertos, nunca los devueltos."""
         author = self.client.post(
             "/autores", json={"nombre": "Autora de préstamos"}
         ).json()

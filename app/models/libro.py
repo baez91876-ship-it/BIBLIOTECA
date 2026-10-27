@@ -1,3 +1,5 @@
+"""Modelo ORM de los libros y sus relaciones de catálogo y préstamos."""
+
 from sqlalchemy import ForeignKey, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -6,6 +8,8 @@ from .categoria import libro_categoria
 
 
 class Libro(Base):
+    """Libro catalogado con autor, categorías, ejemplares y préstamos."""
+
     __tablename__ = "libros"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
@@ -25,6 +29,7 @@ class Libro(Base):
 
     @property
     def disponibles(self) -> int:
+        """Calcula los ejemplares disponibles descontando préstamos abiertos."""
         return self.ejemplares - sum(
             prestamo.fecha_devolucion is None for prestamo in self.prestamos
         )

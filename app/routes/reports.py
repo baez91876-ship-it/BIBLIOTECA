@@ -1,3 +1,5 @@
+"""Endpoints HTTP de los informes y métricas de la biblioteca."""
+
 from typing import Annotated
 
 from fastapi import APIRouter, Query
@@ -23,6 +25,7 @@ def libros_mas_prestados(
     limite: LimiteReporte = 5,
     skip: Annotated[int, Query(ge=0)] = 0,
 ) -> list[dict]:
+    """Devuelve los libros más prestados con límite y desplazamiento."""
     return reports.most_borrowed_books(db, skip, limite)
 
 
@@ -30,6 +33,7 @@ def libros_mas_prestados(
 def reporte_categorias(
     db: SessionDep, pagination: PaginationDep
 ) -> list[dict]:
+    """Devuelve el total de libros registrado por categoría."""
     return reports.books_by_category(db, pagination)
 
 
@@ -37,6 +41,7 @@ def reporte_categorias(
 def reporte_prestamos_vencidos(
     db: SessionDep, pagination: PaginationDep
 ) -> list[dict]:
+    """Devuelve los préstamos vencidos y sus días de retraso."""
     return reports.overdue_loans(db, pagination)
 
 
@@ -44,14 +49,17 @@ def reporte_prestamos_vencidos(
 def reporte_socios_con_multas(
     db: SessionDep, pagination: PaginationDep
 ) -> list[dict]:
+    """Devuelve socios con multas acumuladas."""
     return reports.members_with_fines(db, pagination)
 
 
 @router.get("/autores", response_model=list[AutorReporte])
 def reporte_autores(db: SessionDep, pagination: PaginationDep) -> list[dict]:
+    """Devuelve totales de libros, ejemplares y préstamos por autor."""
     return reports.authors_summary(db, pagination)
 
 
 @router.get("/resumen", response_model=ResumenReporte)
 def reporte_resumen(db: SessionDep) -> dict:
+    """Devuelve los indicadores globales de actividad."""
     return reports.library_summary(db)

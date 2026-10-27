@@ -1,3 +1,5 @@
+"""Modelo ORM de los socios y su historial de préstamos."""
+
 from datetime import datetime
 
 from sqlalchemy import Boolean, DateTime, Integer, String, func
@@ -7,6 +9,8 @@ from ..core.database import Base
 
 
 class Socio(Base):
+    """Socio de la biblioteca, conservado si tiene historial."""
+
     __tablename__ = "socios"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)

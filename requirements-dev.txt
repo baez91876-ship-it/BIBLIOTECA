@@ -1,3 +1,4 @@
+# Dependencias de pruebas además de las incluidas para la aplicación.
 -r requirements.txt
 httpx>=0.27,<1
 pytest>=8,<10

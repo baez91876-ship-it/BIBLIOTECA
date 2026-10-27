@@ -1,3 +1,5 @@
+"""Reglas de negocio para crear, devolver y administrar préstamos."""
+
 from datetime import date, timedelta
 from decimal import Decimal
 
@@ -17,6 +19,7 @@ from ..schemas.prestamo import (
 
 
 def _loan_options():
+    """Define las relaciones necesarias para responder préstamos completos."""
     return joinedload(Prestamo.socio), joinedload(Prestamo.libro).selectinload(
         Libro.autor
     ), joinedload(Prestamo.libro).selectinload(
@@ -31,6 +34,7 @@ def list_loans(
     socio_id: int | None = None,
     libro_id: int | None = None,
 ) -> list[Prestamo]:
+    """Lista préstamos filtrando por estado, socio o libro."""
     query = select(Prestamo).options(*_loan_options())
     if estado == EstadoPrestamo.devuelto:
         query = query.where(Prestamo.fecha_devolucion.is_not(None))
@@ -56,6 +60,7 @@ def list_loans(
 
 
 def get_loan(loan_id: int, db: Session) -> Prestamo:
+    """Obtiene un préstamo con sus relaciones o informa que no existe."""
     loan = db.scalar(
         select(Prestamo)
         .where(Prestamo.id == loan_id)
@@ -67,6 +72,7 @@ def get_loan(loan_id: int, db: Session) -> Prestamo:
 
 
 def create_loan(data: PrestamoCreate, db: Session) -> Prestamo:
+    """Crea un préstamo tras bloquear y validar socio, libro y disponibilidad."""
     member = db.scalar(
         select(Socio).where(Socio.id == data.socio_id).with_for_update()
     )
@@ -130,6 +136,7 @@ def create_loan(data: PrestamoCreate, db: Session) -> Prestamo:
 def return_loan(
     loan_id: int, data: DevolucionCreate, db: Session
 ) -> Prestamo:
+    """Registra la devolución y calcula 0,50 por cada día de retraso."""
     loan = db.scalar(
         select(Prestamo).where(Prestamo.id == loan_id).with_for_update()
     )
@@ -147,6 +154,7 @@ def return_loan(
 
 
 def patch_loan(loan_id: int, data: PrestamoPatch, db: Session) -> Prestamo:
+    """Actualiza la fecha límite solo mientras el préstamo siga abierto."""
     loan = db.scalar(
         select(Prestamo).where(Prestamo.id == loan_id).with_for_update()
     )
@@ -162,6 +170,7 @@ def patch_loan(loan_id: int, data: PrestamoPatch, db: Session) -> Prestamo:
 
 
 def delete_loan(loan_id: int, db: Session) -> None:
+    """Elimina préstamos abiertos, preservando los ya devueltos."""
     loan = db.scalar(
         select(Prestamo).where(Prestamo.id == loan_id).with_for_update()
     )
@@ -174,6 +183,7 @@ def delete_loan(loan_id: int, db: Session) -> None:
 
 
 def _commit(db: Session) -> None:
+    """Revierte la transacción y normaliza conflictos al guardar préstamos."""
     try:
         db.commit()
     except IntegrityError as exc:

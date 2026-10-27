@@ -1,3 +1,5 @@
+"""Endpoints HTTP para administrar categorías."""
+
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Response, status
@@ -15,16 +17,19 @@ PaginationQuery = Annotated[Pagination, Depends(get_pagination)]
 def listar_categorias(
     db: SessionDep, pagination: PaginationQuery
 ) -> list[Categoria]:
+    """Devuelve la página solicitada de categorías."""
     return categories.list_categories(db, pagination)
 
 
 @router.get("/{categoria_id}", response_model=CategoriaRead)
 def obtener_categoria(categoria_id: int, db: SessionDep) -> Categoria:
+    """Devuelve la categoría identificada por su ID."""
     return categories.get_category(categoria_id, db)
 
 
 @router.post("", response_model=CategoriaRead, status_code=status.HTTP_201_CREATED)
 def crear_categoria(data: CategoriaCreate, db: SessionDep) -> Categoria:
+    """Registra una categoría y devuelve el recurso creado."""
     return categories.create_category(data, db)
 
 
@@ -32,10 +37,12 @@ def crear_categoria(data: CategoriaCreate, db: SessionDep) -> Categoria:
 def actualizar_categoria(
     categoria_id: int, data: CategoriaPatch, db: SessionDep
 ) -> Categoria:
+    """Modifica los campos enviados de la categoría."""
     return categories.patch_category(categoria_id, data, db)
 
 
 @router.delete("/{categoria_id}", status_code=status.HTTP_204_NO_CONTENT)
 def eliminar_categoria(categoria_id: int, db: SessionDep) -> Response:
+    """Elimina la categoría sin eliminar sus libros asociados."""
     categories.delete_category(categoria_id, db)
     return Response(status_code=status.HTTP_204_NO_CONTENT)

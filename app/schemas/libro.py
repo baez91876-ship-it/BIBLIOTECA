@@ -1,3 +1,5 @@
+"""Esquemas de validación y serialización de libros."""
+
 from datetime import date
 
 from pydantic import (
@@ -13,6 +15,7 @@ from .categoria import CategoriaRead
 
 
 def _validar_categoria_ids(value: list[int]) -> list[int]:
+    """Limita la cantidad de categorías y rechaza identificadores duplicados."""
     if not 1 <= len(value) <= 5:
         raise ValueError("Debe seleccionar entre 1 y 5 categorías")
     if len(value) != len(set(value)):
@@ -21,6 +24,8 @@ def _validar_categoria_ids(value: list[int]) -> list[int]:
 
 
 class LibroCreate(BaseModel):
+    """Datos necesarios para registrar un libro con sus relaciones."""
+
     model_config = ConfigDict(str_strip_whitespace=True)
 
     titulo: str = Field(min_length=1, max_length=150)
@@ -33,15 +38,19 @@ class LibroCreate(BaseModel):
     @field_validator("titulo")
     @classmethod
     def formatear_titulo(cls, value: str) -> str:
+        """Normaliza espacios y capitalización del título."""
         return " ".join(value.split()).title()
 
     @field_validator("categoria_ids")
     @classmethod
     def validar_categoria_ids(cls, value: list[int]) -> list[int]:
+        """Aplica las reglas comunes de cantidad y unicidad de categorías."""
         return _validar_categoria_ids(value)
 
 
 class LibroPatch(BaseModel):
+    """Campos opcionales permitidos al modificar un libro."""
+
     model_config = ConfigDict(str_strip_whitespace=True)
 
     titulo: str | None = Field(default=None, min_length=1, max_length=150)
@@ -56,6 +65,7 @@ class LibroPatch(BaseModel):
     @field_validator("titulo")
     @classmethod
     def formatear_titulo(cls, value: str | None) -> str | None:
+        """Normaliza el título solo cuando se proporciona."""
         return " ".join(value.split()).title() if value else value
 
     @field_validator("categoria_ids")
@@ -63,10 +73,12 @@ class LibroPatch(BaseModel):
     def validar_categoria_ids(
         cls, value: list[int] | None
     ) -> list[int] | None:
+        """Valida las categorías si se envían en la actualización."""
         return _validar_categoria_ids(value) if value is not None else None
 
     @model_validator(mode="after")
     def validar_valores_no_nulos(self):
+        """Rechaza nulos explícitos para campos incluidos en PATCH."""
         if any(
             getattr(self, field) is None
             for field in self.model_fields_set
@@ -76,6 +88,8 @@ class LibroPatch(BaseModel):
 
 
 class LibroRead(BaseModel):
+    """Libro de respuesta con relaciones y disponibilidad calculada."""
+
     model_config = ConfigDict(from_attributes=True)
 
     id: int

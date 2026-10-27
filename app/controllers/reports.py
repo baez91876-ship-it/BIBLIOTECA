@@ -1,3 +1,5 @@
+"""Consultas agregadas para los informes de actividad de la biblioteca."""
+
 from datetime import date
 
 from sqlalchemy import Integer, case, distinct, func, select
@@ -10,6 +12,7 @@ from ..models import Autor, Categoria, Libro, Prestamo, Socio, libro_categoria
 def most_borrowed_books(
     db: Session, skip: int, limit: int
 ) -> list[dict]:
+    """Devuelve el ranking de libros ordenado por cantidad de préstamos."""
     query = (
         select(
             Libro.id.label("libro_id"),
@@ -28,6 +31,7 @@ def most_borrowed_books(
 
 
 def books_by_category(db: Session, pagination: Pagination) -> list[dict]:
+    """Cuenta libros por categoría, incluidas las categorías vacías."""
     query = (
         select(
             Categoria.id.label("categoria_id"),
@@ -46,6 +50,7 @@ def books_by_category(db: Session, pagination: Pagination) -> list[dict]:
 
 
 def overdue_loans(db: Session, pagination: Pagination) -> list[dict]:
+    """Lista préstamos sin devolver y calcula sus días de retraso."""
     late_days = _days_late_expression(db)
     query = (
         select(
@@ -70,6 +75,7 @@ def overdue_loans(db: Session, pagination: Pagination) -> list[dict]:
 
 
 def members_with_fines(db: Session, pagination: Pagination) -> list[dict]:
+    """Agrupa multas positivas por socio y ordena por importe acumulado."""
     fine_total = func.sum(Prestamo.multa)
     fine_loans = func.count(case((Prestamo.multa > 0, Prestamo.id)))
     query = (
@@ -91,6 +97,7 @@ def members_with_fines(db: Session, pagination: Pagination) -> list[dict]:
 
 
 def authors_summary(db: Session, pagination: Pagination) -> list[dict]:
+    """Resume libros, ejemplares y préstamos por autor sin duplicar agregados."""
     book_totals = (
         select(
             Libro.autor_id.label("autor_id"),
@@ -138,6 +145,7 @@ def authors_summary(db: Session, pagination: Pagination) -> list[dict]:
 
 
 def library_summary(db: Session) -> dict:
+    """Calcula los indicadores globales en una sola consulta."""
     active_loans = select(func.count(Prestamo.id)).where(
         Prestamo.fecha_devolucion.is_(None)
     ).scalar_subquery()
@@ -166,10 +174,12 @@ def library_summary(db: Session) -> dict:
 
 
 def _days_late_expression(db: Session):
+    """Calcula días de retraso con una expresión compatible con PostgreSQL y SQLite."""
+    today = date.today()
     if db.get_bind().dialect.name == "postgresql":
-        return func.current_date() - Prestamo.fecha_limite
+        return today - Prestamo.fecha_limite
     return func.cast(
-        func.julianday(func.current_date())
+        func.julianday(today)
         - func.julianday(Prestamo.fecha_limite),
         Integer,
     )

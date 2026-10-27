@@ -1,3 +1,5 @@
+"""Modelo ORM de los autores del catálogo."""
+
 from sqlalchemy import Integer, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -5,6 +7,8 @@ from ..core.database import Base
 
 
 class Autor(Base):
+    """Autor que puede estar asociado a varios libros."""
+
     __tablename__ = "autores"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
