@@ -4,12 +4,12 @@ from datetime import date, timedelta
 from decimal import Decimal
 
 from sqlalchemy import func, select
-from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, joinedload
 
 from ..core.dependencies import Pagination
 from ..core.exceptions import Conflicto, NoEncontrado, ReglaNegocio
 from ..core.pagination import execute_page
+from ..core.transactions import commit_or_conflict
 from ..models import Libro, Prestamo, Socio
 from ..schemas.prestamo import (
     DevolucionCreate,
@@ -61,25 +61,17 @@ def list_loans(
     query = query.order_by(Prestamo.fecha_prestamo.desc(), Prestamo.id)
     if include_total:
         return execute_page(db, query, pagination)
-    return (
-        db.scalars(
-            query.offset(pagination.skip).limit(pagination.limit)
-        )
-        .unique()
-        .all()
+    return list(
+        db.scalars(query.offset(pagination.skip).limit(pagination.limit)).unique().all()
     )
 
 
-def get_loan(
-    loan_id: int, db: Session, owner_id: int | None = None
-) -> Prestamo:
+def get_loan(loan_id: int, db: Session, owner_id: int | None = None) -> Prestamo:
     """Obtiene un préstamo con sus relaciones o informa que no existe."""
-    loan = db.scalar(
-        select(Prestamo)
-        .where(Prestamo.id == loan_id)
-        .where(Prestamo.socio_id == owner_id if owner_id is not None else True)
-        .options(*_loan_options())
-    )
+    query = select(Prestamo).where(Prestamo.id == loan_id).options(*_loan_options())
+    if owner_id is not None:
+        query = query.where(Prestamo.socio_id == owner_id)
+    loan = db.scalar(query)
     if loan is None:
         raise NoEncontrado("Préstamo no encontrado")
     return loan
@@ -105,12 +97,12 @@ def create_loan(data: PrestamoCreate, db: Session) -> Prestamo:
     )
     if overdue is not None:
         raise ReglaNegocio("El socio tiene préstamos vencidos")
-    active_for_member = db.scalar(
+    active_for_member = db.execute(
         select(func.count(Prestamo.id)).where(
             Prestamo.socio_id == member.id,
             Prestamo.fecha_devolucion.is_(None),
         )
-    )
+    ).scalar_one()
     if active_for_member >= 3:
         raise ReglaNegocio("Máximo de 3 préstamos")
     duplicate = db.scalar(
@@ -122,12 +114,12 @@ def create_loan(data: PrestamoCreate, db: Session) -> Prestamo:
     )
     if duplicate is not None:
         raise Conflicto("El socio ya tiene este libro sin devolver")
-    active_for_book = db.scalar(
+    active_for_book = db.execute(
         select(func.count(Prestamo.id)).where(
             Prestamo.libro_id == book.id,
             Prestamo.fecha_devolucion.is_(None),
         )
-    )
+    ).scalar_one()
     if book.ejemplares - active_for_book <= 0:
         raise ReglaNegocio("No hay ejemplares disponibles")
     loan_date = data.fecha_prestamo or today
@@ -141,7 +133,7 @@ def create_loan(data: PrestamoCreate, db: Session) -> Prestamo:
         multa=Decimal(0),
     )
     db.add(loan)
-    _commit(db)
+    commit_or_conflict(db, "No se pudo guardar el préstamo")
     return get_loan(loan.id, db)
 
 
@@ -157,7 +149,7 @@ def return_loan(loan_id: int, data: DevolucionCreate, db: Session) -> Prestamo:
     late_days = max((data.fecha_devolucion - loan.fecha_limite).days, 0)
     loan.fecha_devolucion = data.fecha_devolucion
     loan.multa = Decimal(late_days) * Decimal("0.50")
-    _commit(db)
+    commit_or_conflict(db, "No se pudo guardar el préstamo")
     return get_loan(loan.id, db)
 
 
@@ -171,7 +163,7 @@ def patch_loan(loan_id: int, data: PrestamoPatch, db: Session) -> Prestamo:
     if data.fecha_limite < loan.fecha_prestamo:
         raise ReglaNegocio("La fecha límite no puede ser anterior al préstamo")
     loan.fecha_limite = data.fecha_limite
-    _commit(db)
+    commit_or_conflict(db, "No se pudo guardar el préstamo")
     return get_loan(loan.id, db)
 
 
@@ -184,12 +176,3 @@ def delete_loan(loan_id: int, db: Session) -> None:
         raise Conflicto("No se puede eliminar un préstamo devuelto")
     db.delete(loan)
     db.commit()
-
-
-def _commit(db: Session) -> None:
-    """Revierte la transacción y normaliza conflictos al guardar préstamos."""
-    try:
-        db.commit()
-    except IntegrityError as exc:
-        db.rollback()
-        raise Conflicto("No se pudo guardar el préstamo") from exc

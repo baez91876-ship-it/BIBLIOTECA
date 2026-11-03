@@ -8,7 +8,7 @@
   <title>Libreria | Gestión de libros</title>
   <link rel="stylesheet" href="static/styles.css?v=auth-v4">
   <script src="api-config.js?v=fastapi-cloud-v1" defer></script>
-  <script src="static/app.js?v=fastapi-cloud-v1" defer></script>
+  <script src="static/app.js?v=ui-fixes-v2" defer></script>
 </head>
 <body>
   <!-- Navegación lateral y contenido principal de la biblioteca. -->
@@ -100,7 +100,7 @@
           </div>
           <label class="search-box">
             <span aria-hidden="true">⌕</span>
-            <input id="search" type="search" placeholder="Buscar título o autor..." autocomplete="off">
+            <input id="search" type="search" aria-label="Buscar título o autor" placeholder="Buscar título o autor..." autocomplete="off">
           </label>
         </div>
         <div id="notice" class="notice" role="status" aria-live="polite" hidden></div>
@@ -172,7 +172,7 @@
             </div>
             <label class="search-box">
               <span aria-hidden="true">⌕</span>
-              <input id="management-search" type="search" placeholder="Buscar..." autocomplete="off">
+              <input id="management-search" type="search" aria-label="Buscar registros" placeholder="Buscar..." autocomplete="off">
             </label>
           </div>
           <div id="management-notice" class="notice" role="status" aria-live="polite" hidden></div>
@@ -215,11 +215,11 @@
       <label for="author">Autor</label>
       <select id="author" name="autor_id" required></select>
       <label for="year">Año de publicación</label>
-      <input id="year" name="anio_publicacion" type="number" required min="0" max="9999">
+      <input id="year" name="anio_publicacion" type="number" required min="1450">
       <label for="copies">Ejemplares</label>
-      <input id="copies" name="ejemplares" type="number" required min="0" value="1">
+      <input id="copies" name="ejemplares" type="number" required min="1" max="50" value="1">
       <label for="categories">Categorías</label>
-      <select id="categories" name="categorias_ids" multiple size="4"></select>
+      <select id="categories" name="categoria_ids" multiple size="4" required></select>
       <p class="form-error" id="form-error" role="alert" hidden></p>
       <div class="dialog-actions">
         <button class="button button-secondary" id="cancel-dialog" type="button">Cancelar</button>

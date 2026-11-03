@@ -1,12 +1,12 @@
 """Consultas y reglas de negocio para categorías."""
 
 from sqlalchemy import select
-from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from ..core.dependencies import Pagination
 from ..core.exceptions import Conflicto, NoEncontrado
 from ..core.pagination import execute_page
+from ..core.transactions import commit_or_conflict
 from ..models import Categoria
 from ..schemas.categoria import CategoriaCreate, CategoriaPatch
 
@@ -15,15 +15,10 @@ def list_categories(
     db: Session, pagination: Pagination, include_total: bool = False
 ) -> list[Categoria] | tuple[list[Categoria], int]:
     """Lista categorías con orden estable y paginación."""
-    query = (
-        select(Categoria)
-        .order_by(Categoria.nombre, Categoria.id)
-    )
+    query = select(Categoria).order_by(Categoria.nombre, Categoria.id)
     if include_total:
         return execute_page(db, query, pagination)
-    return db.scalars(
-        query.offset(pagination.skip).limit(pagination.limit)
-    ).all()
+    return list(db.scalars(query.offset(pagination.skip).limit(pagination.limit)).all())
 
 
 def get_category(category_id: int, db: Session) -> Categoria:
@@ -40,7 +35,7 @@ def create_category(data: CategoriaCreate, db: Session) -> Categoria:
         raise Conflicto("La categoría ya existe")
     category = Categoria(**data.model_dump())
     db.add(category)
-    _commit(db)
+    commit_or_conflict(db, "La categoría ya existe")
     db.refresh(category)
     return category
 
@@ -59,7 +54,7 @@ def patch_category(category_id: int, data: CategoriaPatch, db: Session) -> Categ
             raise Conflicto("La categoría ya existe")
     for field, value in changes.items():
         setattr(category, field, value)
-    _commit(db)
+    commit_or_conflict(db, "La categoría ya existe")
     db.refresh(category)
     return category
 
@@ -70,12 +65,3 @@ def delete_category(category_id: int, db: Session) -> None:
     category.libros.clear()
     db.delete(category)
     db.commit()
-
-
-def _commit(db: Session) -> None:
-    """Revierte la transacción y traduce nombres duplicados a conflicto."""
-    try:
-        db.commit()
-    except IntegrityError as exc:
-        db.rollback()
-        raise Conflicto("La categoría ya existe") from exc

@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session, selectinload
 from ..core.dependencies import Pagination
 from ..core.exceptions import Conflicto, NoEncontrado
 from ..core.pagination import execute_page
+from ..core.transactions import commit_or_conflict
 from ..models import Autor, Libro
 from ..schemas.autor import AutorCreate, AutorPatch
 
@@ -22,7 +23,7 @@ def list_authors(
         query = query.where(Autor.nacionalidad.ilike(f"%{nacionalidad.strip()}%"))
     if include_total:
         return execute_page(db, query, pagination)
-    return db.scalars(query.offset(pagination.skip).limit(pagination.limit)).all()
+    return list(db.scalars(query.offset(pagination.skip).limit(pagination.limit)).all())
 
 
 def get_author(author_id: int, db: Session) -> Autor:
@@ -55,7 +56,7 @@ def list_author_books(
     )
     if include_total:
         return execute_page(db, query, pagination)
-    return db.scalars(query).all()
+    return list(db.scalars(query).all())
 
 
 def create_author(data: AutorCreate, db: Session) -> Autor:
@@ -64,7 +65,7 @@ def create_author(data: AutorCreate, db: Session) -> Autor:
         raise Conflicto("El autor ya existe")
     author = Autor(**data.model_dump())
     db.add(author)
-    _commit(db, "El autor ya existe")
+    commit_or_conflict(db, "El autor ya existe")
     db.refresh(author)
     return author
 
@@ -83,7 +84,7 @@ def patch_author(author_id: int, data: AutorPatch, db: Session) -> Autor:
             raise Conflicto("El autor ya existe")
     for field, value in changes.items():
         setattr(author, field, value)
-    _commit(db, "El autor ya existe")
+    commit_or_conflict(db, "El autor ya existe")
     db.refresh(author)
     return author
 
@@ -95,14 +96,3 @@ def delete_author(author_id: int, db: Session) -> None:
         raise Conflicto("No se puede eliminar un autor que tiene libros")
     db.delete(author)
     db.commit()
-
-
-def _commit(db: Session, duplicate_message: str) -> None:
-    """Revierte la transacción y traduce restricciones de unicidad."""
-    from sqlalchemy.exc import IntegrityError
-
-    try:
-        db.commit()
-    except IntegrityError as exc:
-        db.rollback()
-        raise Conflicto(duplicate_message) from exc

@@ -3,12 +3,12 @@
 from enum import Enum
 
 from sqlalchemy import select
-from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, selectinload
 
 from ..core.dependencies import Pagination
 from ..core.exceptions import Conflicto, NoEncontrado, ReglaNegocio
 from ..core.pagination import execute_page
+from ..core.transactions import commit_or_conflict
 from ..models import Autor, Categoria, Libro, Prestamo
 from ..schemas.libro import LibroCreate, LibroPatch
 
@@ -64,7 +64,7 @@ def list_books(
         query = query.order_by(Libro.titulo, Libro.id)
     if include_total:
         return execute_page(db, query, pagination)
-    return (
+    return list(
         db.scalars(query.offset(pagination.skip).limit(pagination.limit)).unique().all()
     )
 
@@ -91,7 +91,7 @@ def create_book(data: LibroCreate, db: Session) -> Libro:
         db.scalars(select(Categoria).where(Categoria.id.in_(category_ids))).all()
     )
     db.add(book)
-    _commit(db, "El ISBN ya está registrado")
+    commit_or_conflict(db, "El ISBN ya está registrado")
     return get_book(book.id, db)
 
 
@@ -121,7 +121,7 @@ def patch_book(book_id: int, data: LibroPatch, db: Session) -> Libro:
         raise ReglaNegocio(
             "Los ejemplares no pueden ser menores que los préstamos sin devolver"
         )
-    _commit(db, "El ISBN ya está registrado")
+    commit_or_conflict(db, "El ISBN ya está registrado")
     return get_book(book.id, db)
 
 
@@ -161,12 +161,3 @@ def _validate_author_and_categories(
         raise NoEncontrado(
             "Categorías no encontradas: " + ", ".join(map(str, sorted(missing_ids)))
         )
-
-
-def _commit(db: Session, duplicate_message: str) -> None:
-    """Revierte la transacción y traduce restricciones de unicidad."""
-    try:
-        db.commit()
-    except IntegrityError as exc:
-        db.rollback()
-        raise Conflicto(duplicate_message) from exc
