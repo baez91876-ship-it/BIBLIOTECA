@@ -4,17 +4,21 @@ import socket
 import threading
 from collections.abc import Iterator
 from dataclasses import dataclass
+from io import BytesIO
 from pathlib import Path
 from time import monotonic, sleep
 
 import pytest
 import uvicorn
+from PIL import Image
 from playwright.sync_api import Browser, Page, Route, expect, sync_playwright
 from sqlalchemy import create_engine, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from backend.app import main
+from backend.app.core import covers
 from backend.app.core.database import Base, get_db
+from backend.app.core.exceptions import ServicioNoDisponible
 from backend.app.core.security import hash_password
 from backend.app.models import Autor, Categoria, Libro, Socio, Usuario
 from backend.app.routes.auth import limiter
@@ -251,6 +255,110 @@ def test_book_create_validation_edit_and_delete(ui: UI) -> None:
     ui.page.once("dialog", lambda dialog: dialog.accept())
     row.locator('[data-action="delete"]').click()
     expect(ui.page.locator("#book-list tr")).to_have_count(1)
+
+
+def cover_file():
+    image = BytesIO()
+    Image.new("RGB", (30, 40), "blue").save(image, format="PNG")
+    return {"name": "portada.png", "mimeType": "image/png", "buffer": image.getvalue()}
+
+
+@pytest.mark.parametrize("first_upload_fails", [False, True])
+def test_cover_new_book_preview_and_safe_retry(ui: UI, monkeypatch, first_upload_fails):
+    seed_catalog(ui)
+    uploads = []
+    file = cover_file()
+    ui.page.route("https://covers.test/**", lambda route: route.fulfill(
+        content_type="image/png", body=file["buffer"],
+    ))
+
+    def upload(data):
+        assert data == file["buffer"]
+        uploads.append(data)
+        if first_upload_fails and len(uploads) == 1:
+            raise ServicioNoDisponible("Subida de prueba fallida")
+        return covers.Cover(url="https://covers.test/new.png", public_id="new")
+
+    monkeypatch.setattr(covers, "upload_cover", upload)
+    ui.page.goto(ui.url, wait_until="domcontentloaded")
+    sign_in(ui)
+    ui.page.locator("#add-book").click()
+    ui.page.locator("#title").fill("Libro Ilustrado")
+    ui.page.locator("#isbn").fill("9780000000002")
+    ui.page.locator("#author").select_option(label="Ana Escritora")
+    ui.page.locator("#year").fill("2020")
+    ui.page.locator("#copies").fill("2")
+    ui.page.locator("#categories").select_option(label="novela")
+    ui.page.locator("#cover-file").set_input_files(file)
+    expect(ui.page.locator("#cover-preview")).to_be_visible()
+    assert ui.page.locator("#cover-preview").get_attribute("src").startswith("blob:")
+    with ui.page.expect_request("**/libros/*/portada") as request:
+        ui.page.locator("#save-book").click()
+    assert "multipart/form-data; boundary=" in request.value.headers["content-type"]
+    if first_upload_fails:
+        expect(ui.page.locator("#form-error")).to_contain_text("El libro fue guardado")
+        expect(ui.page.locator("#book-dialog")).to_be_visible()
+        expect(ui.page.locator("#save-book")).to_be_enabled()
+        ui.page.locator("#save-book").click()
+    expect(ui.page.locator("#book-dialog")).not_to_be_visible()
+    row = ui.page.locator("#book-list tr").filter(has_text="Libro Ilustrado")
+    expect(row.locator("img.book-cover")).to_have_attribute("src", "https://covers.test/new.png")
+    expect(row.locator("img")).to_have_js_property("complete", True)
+    assert row.locator("img").evaluate("(image) => image.naturalWidth > 0")
+    with ui.sessions() as db:
+        assert len(db.scalars(select(Libro)).all()) == 2
+        book = db.scalar(select(Libro).where(Libro.titulo == "Libro Ilustrado"))
+        assert book.portada_public_id == "new"
+    assert len(uploads) == (2 if first_upload_fails else 1)
+
+
+def test_existing_cover_preview_replace_and_no_file_preserves_cover(ui: UI, monkeypatch):
+    seed_catalog(ui)
+    with ui.sessions() as db:
+        book = db.scalar(select(Libro))
+        book.portada_url = "https://covers.test/old.png"
+        book.portada_public_id = "old"
+        db.commit()
+    file = cover_file()
+    ui.page.route("https://covers.test/**", lambda route: route.fulfill(
+        content_type="image/png", body=file["buffer"],
+    ))
+    deleted = []
+    monkeypatch.setattr(covers, "upload_cover", lambda data: covers.Cover(
+        url="https://covers.test/new.png", public_id="new",
+    ))
+    monkeypatch.setattr(covers, "delete_cover", deleted.append)
+    ui.page.goto(ui.url)
+    sign_in(ui)
+    ui.page.locator('#book-list [data-action="edit"]').click()
+    expect(ui.page.locator("#cover-preview")).to_have_attribute("src", "https://covers.test/old.png")
+    ui.page.locator("#title").fill("Libro Editado")
+    ui.page.locator("#save-book").click()
+    expect(ui.page.locator("#book-dialog")).not_to_be_visible()
+    expect(ui.page.locator("img.book-cover")).to_have_attribute("src", "https://covers.test/old.png")
+    assert not deleted
+    ui.page.locator('#book-list [data-action="edit"]').click()
+    ui.page.locator("#cover-file").set_input_files(file)
+    ui.page.locator("#save-book").click()
+    expect(ui.page.locator("#book-dialog")).not_to_be_visible()
+    expect(ui.page.locator("img.book-cover")).to_have_attribute("src", "https://covers.test/new.png")
+    assert deleted == ["old"]
+
+
+def test_cover_input_validation_and_reset(ui: UI):
+    seed_catalog(ui)
+    ui.page.goto(ui.url)
+    sign_in(ui)
+    ui.page.locator("#add-book").click()
+    ui.page.locator("#cover-file").set_input_files({
+        "name": "bad.svg", "mimeType": "image/svg+xml", "buffer": b"<svg></svg>",
+    })
+    expect(ui.page.locator("#form-error")).to_contain_text("JPEG, PNG o WebP")
+    assert not ui.page.locator("#cover-file").evaluate("(input) => input.validity.valid")
+    ui.page.locator("#cancel-dialog").click()
+    ui.page.locator("#add-book").click()
+    assert ui.page.locator("#cover-file").evaluate("(input) => input.validity.valid")
+    expect(ui.page.locator("#cover-preview")).not_to_be_visible()
 
 
 def test_loan_create_edit_return_and_protected_history(ui: UI) -> None:

@@ -24,6 +24,8 @@ class Libro(Base):
     isbn: Mapped[str] = mapped_column(String(13), nullable=False, unique=True)
     anio_publicacion: Mapped[int] = mapped_column(Integer, nullable=False)
     ejemplares: Mapped[int] = mapped_column(Integer, nullable=False)
+    portada_url: Mapped[str | None] = mapped_column(String(1000))
+    portada_public_id: Mapped[str | None] = mapped_column(String(255))
     autor_id: Mapped[int] = mapped_column(
         ForeignKey("autores.id", ondelete="RESTRICT"), nullable=False
     )

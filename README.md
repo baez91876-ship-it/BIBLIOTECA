@@ -56,6 +56,40 @@ bibliotecario o administrador para gestionar el catálogo y las operaciones
 internas. El acceso dura 15 minutos y la interfaz rota el refresh token; al
 cerrar sesión revoca ese token.
 
+## Portadas con Cloudinary
+
+En el formulario de libros, un bibliotecario o administrador puede seleccionar
+una portada, ver su vista previa y subirla o reemplazarla. Los libros sin imagen
+conservan su presentación con la inicial del título.
+
+En Cloudinary, copia estos valores desde **Console → API Keys** y guárdalos
+en el `.env` local o en **Render → Web Service → Environment**:
+
+| Key | Value |
+|---|---|
+| `CLOUDINARY_CLOUD_NAME` | Cloud name de tu cuenta |
+| `CLOUDINARY_API_KEY` | API key de tu cuenta |
+| `CLOUDINARY_API_SECRET` | API secret de tu cuenta |
+
+No pongas claves en el frontend, GitHub ni el chat. No necesitas un upload preset:
+el backend firma la subida. Guarda el entorno y vuelve a desplegar en Render.
+El comando de inicio habitual aplica la migración `0004_portadas` sin borrar libros.
+Sin estas variables el catálogo funciona, pero las subidas devuelven un error 503
+indicando que Cloudinary no está configurado.
+
+`POST /api/v1/libros/{id}/portada` recibe `multipart/form-data` con el campo
+`archivo`; requiere sesión de bibliotecario o administrador. Admite imágenes reales
+JPEG, PNG o WebP de hasta 5 MiB y 20 megapíxeles. El servidor las redimensiona
+a un máximo de 1200 × 1600, elimina metadatos y las guarda como JPEG.
+La API pública devuelve `portada_url`, nunca las claves ni el ID privado del recurso.
+
+El libro se guarda antes de subir la portada. Si la subida falla, el formulario
+permite reintentar sin duplicar el libro. Al reemplazar, la imagen anterior se borra
+solo después de guardar la nueva; al eliminar un libro permitido, se borra su imagen.
+Si falla el borrado en Cloudinary, se informa explícitamente que el cambio del libro
+ya fue guardado; revisa el recurso pendiente en Cloudinary. Las pruebas simulan el
+proveedor: la conexión real requiere configurar tu cuenta y probar una subida.
+
 ## Preparar GitHub Pages
 
 La interfaz estática está organizada en `frontend/` y se publica en cada cambio a
@@ -166,6 +200,8 @@ controles de al menos 44 × 44 px, foco de teclado visible y texto ampliable al
 200 %, sin desbordar la página; las tablas anchas se desplazan dentro de su panel.
 También verifica que vaciar campos opcionales al editar elimine sus valores. No requiere
 credenciales reales ni modifica los datos de PostgreSQL.
+Las pruebas de portadas comprueban validación de imágenes, permisos, reemplazo,
+limpieza tras fallos y reintentos sin duplicados; no contactan Cloudinary.
 
 Para ejecutar solo el navegador:
 

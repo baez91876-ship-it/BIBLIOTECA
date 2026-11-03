@@ -5,6 +5,9 @@ const emptyTitle = document.querySelector("#empty-title");
 const emptyDescription = document.querySelector("#empty-description");
 const dialog = document.querySelector("#book-dialog");
 const form = document.querySelector("#book-form");
+const coverInput = document.querySelector("#cover-file");
+const coverPreview = document.querySelector("#cover-preview");
+let coverObjectUrl = null;
 const notice = document.querySelector("#notice");
 const searchInput = document.querySelector("#search");
 const booksView = document.querySelector("#books-view");
@@ -258,7 +261,8 @@ async function apiRequest(path, options = {}) {
   const response = await fetchApi(`${apiBaseUrl}/api/v1${path}`, {
     ...requestOptions,
     headers: {
-      ...(options.body ? { "Content-Type": "application/json" } : {}),
+      ...(options.body && !(options.body instanceof FormData)
+        ? { "Content-Type": "application/json" } : {}),
       ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
       ...options.headers,
     },
@@ -328,10 +332,16 @@ function renderBooks() {
     const titleCell = document.createElement("td");
     const title = document.createElement("div");
     title.className = "book-title";
-    const cover = document.createElement("span");
+    const cover = document.createElement(book.portada_url ? "img" : "span");
     cover.className = "book-cover";
-    cover.setAttribute("aria-hidden", "true");
-    cover.textContent = book.titulo.trim().charAt(0).toLocaleUpperCase("es") || "L";
+    if (book.portada_url) {
+      cover.src = book.portada_url;
+      cover.alt = `Portada de ${book.titulo}`;
+      cover.loading = "lazy";
+    } else {
+      cover.setAttribute("aria-hidden", "true");
+      cover.textContent = book.titulo.trim().charAt(0).toLocaleUpperCase("es") || "L";
+    }
     const titleText = document.createElement("span");
     titleText.textContent = book.titulo;
     title.append(cover, titleText);
@@ -562,6 +572,8 @@ function openBookDialog(book = null) {
   // Inicializa el formulario del libro con autores y categorías disponibles.
   editingBookId = book?.id ?? null;
   form.reset();
+  coverInput.setCustomValidity("");
+  updateCoverPreview(book?.portada_url);
   document.querySelector("#dialog-title").textContent = book ? "Editar libro" : "Añadir libro";
   document.querySelector("#save-book").textContent = book ? "Guardar cambios" : "Guardar libro";
   document.querySelector("#title").value = book?.titulo ?? "";
@@ -589,6 +601,36 @@ function openBookDialog(book = null) {
   dialog.showModal();
   document.querySelector("#title").focus();
 }
+
+function updateCoverPreview(url = null) {
+  if (coverObjectUrl) URL.revokeObjectURL(coverObjectUrl);
+  coverObjectUrl = null;
+  coverPreview.hidden = !url;
+  if (url) coverPreview.src = url;
+  else coverPreview.removeAttribute("src");
+}
+
+coverInput.addEventListener("change", () => {
+  const file = coverInput.files[0];
+  const error = document.querySelector("#form-error");
+  error.hidden = true;
+  coverInput.setCustomValidity("");
+  if (file && (!["image/jpeg", "image/png", "image/webp"].includes(file.type)
+    || file.size > 5 * 1024 * 1024 || file.size === 0)) {
+    const message = "Selecciona una imagen JPEG, PNG o WebP de hasta 5 MiB.";
+    coverInput.setCustomValidity(message);
+    error.textContent = message;
+    error.hidden = false;
+    return;
+  }
+  updateCoverPreview(books.find((book) => book.id === editingBookId)?.portada_url);
+  if (file) {
+    coverObjectUrl = URL.createObjectURL(file);
+    coverPreview.src = coverObjectUrl;
+    coverPreview.hidden = false;
+  }
+});
+dialog.addEventListener("close", () => updateCoverPreview());
 
 function openRecordDialog(record = null) {
   // Genera campos dinámicos según el recurso y el modo de creación o edición.
@@ -688,16 +730,34 @@ form.addEventListener("submit", async (event) => {
   };
   saveButton.disabled = true;
   errorMessage.hidden = true;
+  let bookSaved = false;
   try {
     const path = editingBookId === null ? "/libros" : `/libros/${editingBookId}`;
-    await apiRequest(path, {
+    const savedBook = await apiRequest(path, {
       method: editingBookId === null ? "POST" : "PATCH",
       body: JSON.stringify(payload),
     });
+    editingBookId = savedBook.id;
+    bookSaved = true;
+    const file = coverInput.files[0];
+    if (file) {
+      const upload = new FormData();
+      upload.append("archivo", file);
+      await apiRequest(`/libros/${savedBook.id}/portada`, {
+        method: "POST", body: upload,
+      });
+    }
     dialog.close();
     await loadBooks();
   } catch (error) {
-    errorMessage.textContent = error.message;
+    errorMessage.textContent = bookSaved
+      ? `El libro fue guardado, pero la portada no se pudo completar: ${error.message} Puedes reintentar sin crear otro libro.`
+      : error.message;
+    if (bookSaved) {
+      document.querySelector("#dialog-title").textContent = "Editar libro";
+      saveButton.textContent = "Guardar cambios";
+      await loadBooks();
+    }
     errorMessage.hidden = false;
   } finally {
     saveButton.disabled = false;

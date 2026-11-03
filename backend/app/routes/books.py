@@ -1,9 +1,13 @@
 """Endpoints HTTP para consultar y administrar el catálogo de libros."""
 
-from fastapi import APIRouter, Query, Request, Response, status
+from fastapi import APIRouter, Depends, Query, Request, Response, UploadFile, status
+from starlette.concurrency import run_in_threadpool
 
 from ..controllers import books
-from ..core.dependencies import PaginationDep, SessionDep
+from ..core.covers import MAX_COVER_BYTES
+from ..core.dependencies import PaginationDep, SessionDep, requiere_rol
+from ..core.exceptions import ReglaNegocio
+from ..core.roles import Rol
 from ..models import Libro
 from ..schemas.libro import LibroCreate, LibroPatch, LibroRead
 from ..schemas.pagination import Pagina, crear_pagina
@@ -51,6 +55,21 @@ def crear_libro(data: LibroCreate, db: SessionDep) -> Libro:
 def actualizar_libro(libro_id: int, data: LibroPatch, db: SessionDep) -> Libro:
     """Modifica los campos enviados del libro."""
     return books.patch_book(libro_id, data, db)
+
+
+@router.post(
+    "/{libro_id}/portada", response_model=LibroRead,
+    dependencies=[Depends(requiere_rol(Rol.bibliotecario, Rol.administrador))],
+)
+async def subir_portada(libro_id: int, archivo: UploadFile, db: SessionDep) -> Libro:
+    """Sube una imagen limitada y validada, solo para personal autenticado."""
+    try:
+        data = await archivo.read(MAX_COVER_BYTES + 1)
+    finally:
+        await archivo.close()
+    if len(data) > MAX_COVER_BYTES:
+        raise ReglaNegocio("La portada no puede superar 5 MiB.")
+    return await run_in_threadpool(books.set_book_cover, libro_id, data, db)
 
 
 @router.delete("/{libro_id}", status_code=status.HTTP_204_NO_CONTENT)

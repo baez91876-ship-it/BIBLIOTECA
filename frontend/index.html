@@ -6,9 +6,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#f7f5f0">
   <title>Libreria | Gestión de libros</title>
-  <link rel="stylesheet" href="static/styles.css?v=readable-v5">
+  <link rel="stylesheet" href="static/styles.css?v=covers-v6">
   <script src="api-config.js?v=render-v1" defer></script>
-  <script src="static/app.js?v=render-v3" defer></script>
+  <script src="static/app.js?v=cloudinary-v1" defer></script>
 </head>
 <body>
   <!-- Navegación lateral y contenido principal de la biblioteca. -->
@@ -220,6 +220,10 @@
       <input id="copies" name="ejemplares" type="number" required min="1" max="50" value="1">
       <label for="categories">Categorías</label>
       <select id="categories" name="categoria_ids" multiple size="4" required></select>
+      <label for="cover-file">Portada (opcional)</label>
+      <input id="cover-file" name="portada" type="file" accept="image/jpeg,image/png,image/webp" aria-describedby="cover-help">
+      <p class="auth-help" id="cover-help">JPEG, PNG o WebP, hasta 5 MiB. Selecciona una imagen para subir o reemplazar la portada.</p>
+      <img id="cover-preview" class="cover-preview" alt="Vista previa de la portada" hidden>
       <p class="form-error" id="form-error" role="alert" hidden></p>
       <div class="dialog-actions">
         <button class="button button-secondary" id="cancel-dialog" type="button">Cancelar</button>

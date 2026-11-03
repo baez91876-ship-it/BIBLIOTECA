@@ -112,7 +112,9 @@ td { height: 72px; padding: 14px 20px; border-top: 1px solid #f0efeb; color: #58
 td:first-child { color: var(--ink); font-weight: 600; }
 th:last-child, td:last-child { width: 100px; text-align: right; }
 .book-title { display: flex; align-items: center; gap: 11px; min-width: 170px; }
-.book-cover { display: grid; width: 30px; height: 37px; flex: 0 0 30px; place-items: center; border-radius: 3px 6px 6px 3px; background: #e9eee8; color: #69816c; font-family: "Playfair Display", serif; font-size: 15px; }
+.book-cover { display: grid; width: 48px; height: 64px; flex: 0 0 48px; object-fit: cover; place-items: center; border-radius: 3px 6px 6px 3px; background: #e9eee8; color: #69816c; font-family: "Playfair Display", serif; font-size: 20px; }
+.cover-preview { display: block; width: 120px; height: 160px; object-fit: contain; margin-top: 12px; border-radius: 6px; }
+.book-dialog input[type="file"] { overflow: hidden; }
 .book-title span:last-child { overflow: hidden; max-width: 260px; text-overflow: ellipsis; white-space: nowrap; }
 .status-pill { display: inline-flex; align-items: center; gap: 6px; padding: 5px 9px; border-radius: 20px; background: #edf4ed; color: #547b59; font-size: 10px; white-space: nowrap; }
 .status-pill::before { width: 5px; height: 5px; border-radius: 50%; background: #69a273; content: ""; }

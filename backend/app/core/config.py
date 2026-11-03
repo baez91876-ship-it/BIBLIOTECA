@@ -32,6 +32,9 @@ class Settings(BaseSettings):
     app_env: str = "development"
     login_rate_limit: str = "5/minute"
     registration_rate_limit: str = "5/minute"
+    cloudinary_cloud_name: str | None = None
+    cloudinary_api_key: SecretStr | None = None
+    cloudinary_api_secret: SecretStr | None = None
 
     @field_validator("cors_origins", mode="before")
     @classmethod

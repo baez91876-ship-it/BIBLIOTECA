@@ -93,3 +93,4 @@ class LibroRead(BaseModel):
     disponibles: int
     autor: AutorRead
     categorias: list[CategoriaRead]
+    portada_url: str | None = None

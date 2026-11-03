@@ -45,3 +45,9 @@ class CuentaBloqueada(ErrorAplicacion):
     """La cuenta superó el número permitido de intentos fallidos."""
 
     status_code = 423
+
+
+class ServicioNoDisponible(ErrorAplicacion):
+    """El proveedor externo no está configurado o no responde."""
+
+    status_code = 503

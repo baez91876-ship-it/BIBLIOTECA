@@ -249,4 +249,4 @@ def test_migration_configuration_resolves_reorganized_database_directory():
     )
     scripts = ScriptDirectory.from_config(migrate.ALEMBIC_CONFIG)
     assert Path(scripts.dir) == root / "database" / "alembic"
-    assert scripts.get_current_head() == "0003_usuarios_y_refresh_tokens"
+    assert scripts.get_current_head() == "0004_portadas"

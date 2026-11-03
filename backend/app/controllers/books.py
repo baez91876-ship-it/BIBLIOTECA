@@ -1,16 +1,26 @@
 """Consultas, filtros y reglas de negocio para libros del catálogo."""
 
+import logging
 from enum import Enum
 
 from sqlalchemy import select
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session, selectinload
 
+from ..core import covers
 from ..core.dependencies import Pagination
-from ..core.exceptions import Conflicto, NoEncontrado, ReglaNegocio
+from ..core.exceptions import (
+    Conflicto,
+    NoEncontrado,
+    ReglaNegocio,
+    ServicioNoDisponible,
+)
 from ..core.pagination import execute_page
 from ..core.transactions import commit_or_conflict
 from ..models import Autor, Categoria, Libro, Prestamo
 from ..schemas.libro import LibroCreate, LibroPatch
+
+logger = logging.getLogger("uvicorn.error")
 
 
 class OrdenLibro(str, Enum):
@@ -127,13 +137,51 @@ def patch_book(book_id: int, data: LibroPatch, db: Session) -> Libro:
 
 def delete_book(book_id: int, db: Session) -> None:
     """Impide borrar libros con préstamos abiertos o historial asociado."""
-    book = get_book(book_id, db)
+    book = db.scalar(select(Libro).where(Libro.id == book_id).with_for_update())
+    if book is None:
+        raise NoEncontrado("Libro no encontrado")
     if _active_loan_count(db, book_id):
         raise Conflicto("No se puede eliminar un libro con préstamos sin devolver")
     if db.scalar(select(Prestamo.id).where(Prestamo.libro_id == book_id)):
         raise Conflicto("No se puede eliminar un libro con historial de préstamos")
+    public_id = book.portada_public_id
     db.delete(book)
     db.commit()
+    if public_id:
+        try:
+            covers.delete_cover(public_id)
+        except ServicioNoDisponible as exc:
+            raise ServicioNoDisponible(
+                "El libro fue eliminado, pero no se pudo borrar su portada de Cloudinary."
+            ) from exc
+
+
+def set_book_cover(book_id: int, data: bytes, db: Session) -> Libro:
+    """Bloquea el libro y conserva la portada anterior si no se guarda la nueva."""
+    book = db.scalar(select(Libro).where(Libro.id == book_id).with_for_update())
+    if book is None:
+        raise NoEncontrado("Libro no encontrado")
+    previous_id = book.portada_public_id
+    cover = covers.upload_cover(data)
+    book.portada_url = cover.url
+    book.portada_public_id = cover.public_id
+    try:
+        db.commit()
+    except SQLAlchemyError:
+        db.rollback()
+        try:
+            covers.delete_cover(cover.public_id)
+        except ServicioNoDisponible:
+            logger.error("No se pudo limpiar la portada tras revertir el libro %s.", book_id)
+        raise
+    if previous_id:
+        try:
+            covers.delete_cover(previous_id)
+        except ServicioNoDisponible as exc:
+            raise ServicioNoDisponible(
+                "La nueva portada fue guardada, pero no se pudo borrar la anterior de Cloudinary."
+            ) from exc
+    return get_book(book_id, db)
 
 
 def _active_loan_count(db: Session, book_id: int) -> int:
