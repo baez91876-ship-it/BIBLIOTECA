@@ -8,7 +8,7 @@ Taller 1 en rutas legacy solo para desarrollo.
 
 - Python 3.13
 - Node.js y npm
-- PostgreSQL y una base de datos `libreria`
+- PostgreSQL y una base de datos para la biblioteca
 
 ## Instalación local
 
@@ -18,8 +18,10 @@ python -m venv .venv
 Copy-Item .env.example .env
 ```
 
-Edita `.env` con la URL PostgreSQL de la base `libreria`. La aplicación verifica
-el nombre de la base y no permite conectarse a otro motor o base de datos.
+Edita `.env` con la URL PostgreSQL de la base de datos. Se admiten nombres
+asignados por proveedores como Render. La aplicación solo admite PostgreSQL y
+los endpoints de salud verifican el nombre exacto indicado en `DATABASE_URL`.
+En conexiones externas usa `sslmode=require` para cifrar el tráfico.
 `JWT_SECRET_KEY` debe contener al menos 32 caracteres aleatorios; el valor de
 ejemplo solo es válido para desarrollo. Las tablas se crean y actualizan con
 migraciones versionadas, nunca con `create_all`.
@@ -30,7 +32,7 @@ Para una base nueva, inicia desde la raíz:
 npm run dev
 ```
 
-El comando ejecuta `python -m app.scripts.migrate` antes de iniciar Uvicorn y usa
+El comando ejecuta `python -m backend.app.scripts.migrate` antes de iniciar Uvicorn y usa
 automáticamente el Python de `.venv` si existe; de lo contrario, usa Python del
 `PATH`. No requiere `npm install`.
 
@@ -40,8 +42,8 @@ modificar sus datos. Si prefieres hacerlo manualmente, marca la revisión
 correspondiente antes de iniciar:
 
 ```powershell
-.venv\Scripts\python.exe -m alembic stamp 0001_estado_inicial
-.venv\Scripts\python.exe -m alembic upgrade head
+.venv\Scripts\python.exe -m alembic -c database\alembic.ini stamp 0001_estado_inicial
+.venv\Scripts\python.exe -m alembic -c database\alembic.ini upgrade head
 ```
 
 `npm run dev` requiere una base creada y accesible en PostgreSQL. Las migraciones
@@ -54,13 +56,47 @@ bibliotecario o administrador para gestionar el catálogo y las operaciones
 internas. El acceso dura 15 minutos y la interfaz rota el refresh token; al
 cerrar sesión revoca ese token.
 
+## Portadas con Cloudinary
+
+En el formulario de libros, un bibliotecario o administrador puede seleccionar
+una portada, ver su vista previa y subirla o reemplazarla. Los libros sin imagen
+conservan su presentación con la inicial del título.
+
+En Cloudinary, copia estos valores desde **Console → API Keys** y guárdalos
+en el `.env` local o en **Render → Web Service → Environment**:
+
+| Key | Value |
+|---|---|
+| `CLOUDINARY_CLOUD_NAME` | Cloud name de tu cuenta |
+| `CLOUDINARY_API_KEY` | API key de tu cuenta |
+| `CLOUDINARY_API_SECRET` | API secret de tu cuenta |
+
+No pongas claves en el frontend, GitHub ni el chat. No necesitas un upload preset:
+el backend firma la subida. Guarda el entorno y vuelve a desplegar en Render.
+El comando de inicio habitual aplica la migración `0004_portadas` sin borrar libros.
+Sin estas variables el catálogo funciona, pero las subidas devuelven un error 503
+indicando que Cloudinary no está configurado.
+
+`POST /api/v1/libros/{id}/portada` recibe `multipart/form-data` con el campo
+`archivo`; requiere sesión de bibliotecario o administrador. Admite imágenes reales
+JPEG, PNG o WebP de hasta 5 MiB y 20 megapíxeles. El servidor las redimensiona
+a un máximo de 1200 × 1600, elimina metadatos y las guarda como JPEG.
+La API pública devuelve `portada_url`, nunca las claves ni el ID privado del recurso.
+
+El libro se guarda antes de subir la portada. Si la subida falla, el formulario
+permite reintentar sin duplicar el libro. Al reemplazar, la imagen anterior se borra
+solo después de guardar la nueva; al eliminar un libro permitido, se borra su imagen.
+Si falla el borrado en Cloudinary, se informa explícitamente que el cambio del libro
+ya fue guardado; revisa el recurso pendiente en Cloudinary. Las pruebas simulan el
+proveedor: la conexión real requiere configurar tu cuenta y probar una subida.
+
 ## Preparar GitHub Pages
 
-La interfaz estática está organizada en `docs/` y se publica en cada cambio a
+La interfaz estática está organizada en `frontend/` y se publica en cada cambio a
 `main` con [`.github/workflows/pages.yml`](./.github/workflows/pages.yml). En
 **Settings → Pages → Build and deployment**, selecciona **GitHub Actions** como
 fuente. La API FastAPI y PostgreSQL no se ejecutan en Pages: la API se despliega
-por separado en FastAPI Cloud.
+por separado en Render.
 
 La página publicada está en
 <https://baez91876-ship-it.github.io/BIBLIOTECA/>. El repositorio se llama
@@ -70,72 +106,81 @@ Si la API no responde o todavía no se configura su URL, la interfaz muestra el
 catálogo guardado en modo de solo lectura.
 
 La URL de la API para GitHub Pages se configura en
-[`docs/api-config.js`](./docs/api-config.js). Pages no conserva credenciales;
+[`frontend/api-config.js`](./frontend/api-config.js). Pages no conserva credenciales;
 para operaciones de administración inicia sesión en la interfaz desplegada.
 
-## Desplegar en FastAPI Cloud
+## Desplegar en Render
 
-FastAPI Cloud despliega aplicaciones FastAPI con el comando `fastapi deploy`.
-La dependencia `fastapi[standard]` de `requirements.txt` ya incluye el CLI.
-El punto de entrada está configurado en [`pyproject.toml`](./pyproject.toml) y
-Python 3.13 en [`.python-version`](./.python-version). Instala los requisitos en
-Windows y ejecuta el comando desde la raíz:
+El archivo local `.env` no se sube a GitHub ni se copia a Render. Si aparece
+`ValidationError: ... Settings`, revisa el campo que indica el log:
+`database_url` con `Field required` significa que falta `DATABASE_URL`;
+`jwt_secret_key` o el mensaje de clave aleatoria indica una clave ausente,
+corta o de ejemplo. No publiques los valores de esas variables en los logs.
+
+### Con Blueprint
+
+En Render selecciona **New → Blueprint**, conecta este repositorio y elige
+la rama `version-2`. El archivo [`render.yaml`](./render.yaml) configura el
+servicio sin crear otra base de datos. Cuando Render solicite `DATABASE_URL`,
+pega la URL de la base PostgreSQL existente desde su panel **Connect**.
+El Blueprint genera `JWT_SECRET_KEY` y configura `APP_ENV=production`.
+
+### Si el Web Service ya existe
+
+Los cambios del Blueprint no se aplican automáticamente a un servicio creado
+manualmente. En **Settings** configura:
+
+- **Branch:** `version-2`.
+- **Root Directory:** vacío (raíz del repositorio).
+- **Build Command:** `python -m pip install -r requirements.txt`.
+- **Start Command:** `python -m backend.app.scripts.migrate && python -m uvicorn backend.app.main:app --host 0.0.0.0 --port $PORT`.
+- **Health Check Path:** `/api/v1/health`.
+
+En **Environment** agrega:
+
+| Variable | Valor |
+|---|---|
+| `DATABASE_URL` | URL PostgreSQL de Render, sin comillas envolventes |
+| `JWT_SECRET_KEY` | Clave aleatoria propia de al menos 32 caracteres |
+| `APP_ENV` | `production` |
+| `CORS_ALLOWED_ORIGINS` | `https://baez91876-ship-it.github.io` si usas GitHub Pages |
+
+Puedes generar la clave localmente con
+`python -c "import secrets; print(secrets.token_urlsafe(48))"` y guardarla solo
+en **Environment**. Conserva la misma clave entre despliegues. Usa la URL interna
+si el servicio y la base están en la misma región de Render; para acceso externo,
+usa la URL externa con `sslmode=require`. Se admiten los prefijos `postgres://`,
+`postgresql://` y `postgresql+psycopg://`.
+
+Guarda y selecciona **Manual Deploy → Deploy latest commit** después de subir
+estos cambios. El arranque aplica las migraciones antes de abrir el puerto y
+se detiene si fallan; no borra tablas ni importa datos.
+Comprueba `https://TU-SERVICIO.onrender.com/api/v1/health` y la página `/`.
+Para servir también la interfaz, no necesitas otro servicio ni cambiar
+[`frontend/api-config.js`](./frontend/api-config.js): la interfaz usa la API
+del mismo origen.
+
+Para crear el primer administrador, desde la raíz y con `DATABASE_URL`
+configurada en el entorno local, ejecuta:
 
 ```powershell
-$env:PYTHONUTF8 = "1"
-python -m venv .venv
-.venv\Scripts\python.exe -m pip install -r requirements.txt
-.venv\Scripts\fastapi.exe deploy
-```
-
-Inicia sesión o crea una cuenta cuando el CLI abra el navegador y sigue las
-indicaciones para crear la aplicación. El primer despliegue crea el vínculo
-local `.fastapicloud`. Si la aplicación informa que faltan variables al iniciar,
-configúralas para esa aplicación antes de desplegar de nuevo. Puedes hacerlo
-desde **App Details → Environment Variables** en el Dashboard o con el CLI:
-
-```powershell
-.venv\Scripts\fastapi.exe cloud env set --secret --no-redeploy DATABASE_URL
-.venv\Scripts\fastapi.exe cloud env set --secret --no-redeploy JWT_SECRET_KEY
-.venv\Scripts\fastapi.exe cloud env set --no-redeploy APP_ENV production
-.venv\Scripts\fastapi.exe cloud env set --no-redeploy CORS_ALLOWED_ORIGINS https://baez91876-ship-it.github.io
-```
-
-El CLI solicita los valores secretos sin mostrarlos. Configura estas variables:
-
-- `DATABASE_URL`: URL de PostgreSQL, con nombre de base `libreria`. FastAPI
-  Cloud ofrece integraciones con Neon y Supabase; confirma que la conexión
-  seleccionada use esa base.
-- `JWT_SECRET_KEY`: clave aleatoria de al menos 32 caracteres.
-- `APP_ENV`: `production`.
-- `CORS_ALLOWED_ORIGINS`: `https://baez91876-ship-it.github.io`.
-
-FastAPI Cloud aplica los cambios de variables en el siguiente despliegue. Antes
-de desplegar de nuevo, aplica las migraciones a esa misma base. Copia la URL
-`DATABASE_URL` en tu `.env` local ignorado por Git (sin reemplazar otros valores
-locales) y ejecuta:
-
-```powershell
-.venv\Scripts\python.exe -m app.scripts.migrate
-.venv\Scripts\python.exe -m app.scripts.crear_admin
-.venv\Scripts\fastapi.exe deploy
+.venv\Scripts\python.exe -m backend.app.scripts.crear_admin
 ```
 
 El comando de alta solicita correo, nombre y contraseña sin mostrarla. No existe
 una contraseña inicial ni una ruta pública para asignar roles privilegiados.
-Después del despliegue, comprueba `/api/v1/health` y `/docs` en el dominio
-`.fastapicloud.dev` asignado a la aplicación. Para habilitar el inicio de sesión
-desde GitHub Pages, actualiza `window.BIBLIOTECA_API_URL` en
-[`docs/api-config.js`](./docs/api-config.js) con ese dominio HTTPS y sube el
+Para habilitar el inicio de sesión desde GitHub Pages, actualiza
+`window.BIBLIOTECA_API_URL` en
+[`frontend/api-config.js`](./frontend/api-config.js) con ese dominio HTTPS y sube el
 cambio. Si cambia el dominio, actualiza también `CORS_ALLOWED_ORIGINS` y vuelve
 a desplegar.
 
 ## Pruebas
 
 ```powershell
-.venv\Scripts\python.exe -m pip install -r requirements-dev.txt
+.venv\Scripts\python.exe -m pip install -r backend\requirements-dev.txt
 .venv\Scripts\python.exe -m playwright install chromium
-.venv\Scripts\python.exe -m pytest --cov=app --cov-branch --cov-report=term-missing
+.venv\Scripts\python.exe -m pytest --cov=backend.app --cov-branch --cov-report=term-missing
 npm run check
 ```
 
@@ -144,19 +189,24 @@ autenticación, bloqueo, rotación y reuso de refresh tokens, permisos, paginaci
 reportes, scripts de administración y manejo de errores. Las pruebas de API usan
 SQLite en memoria para no modificar PostgreSQL.
 
-[`test_ui.py`](./test_ui.py) ejecuta Chromium contra un servidor FastAPI real
+[`frontend/tests/test_ui.py`](./frontend/tests/test_ui.py) ejecuta Chromium contra un servidor FastAPI real
 con SQLite temporal y un puerto libre; cierra el navegador y el servidor al
 terminar. Comprueba catálogo, búsqueda, paginación de más de 100 libros, registro,
 permisos, inicio y cierre de sesión, rotación y caducidad de tokens, CRUD de
 libros/autores/categorías/socios, préstamos y devoluciones, errores HTTP y de red,
-catálogo de respaldo, Swagger y diseños de 390, 768 y 1440 píxeles. También
-verifica que vaciar campos opcionales al editar elimine sus valores. No requiere
+catálogo de respaldo, Swagger y diseños de 320, 390, 768, 1024, 1440 y 1920 píxeles.
+Las comprobaciones visuales exigen textos de al menos 14 px, campos de 16 px,
+controles de al menos 44 × 44 px, foco de teclado visible y texto ampliable al
+200 %, sin desbordar la página; las tablas anchas se desplazan dentro de su panel.
+También verifica que vaciar campos opcionales al editar elimine sus valores. No requiere
 credenciales reales ni modifica los datos de PostgreSQL.
+Las pruebas de portadas comprueban validación de imágenes, permisos, reemplazo,
+limpieza tras fallos y reintentos sin duplicados; no contactan Cloudinary.
 
 Para ejecutar solo el navegador:
 
 ```powershell
-.venv\Scripts\python.exe -m pytest test_ui.py -q
+.venv\Scripts\python.exe -m pytest frontend\tests -q
 ```
 
 `npm run check` comprueba la sintaxis de los scripts JavaScript sin instalar
@@ -168,35 +218,44 @@ ni una comprobación de la URL pública.
 
 ```text
 .
-├── app/
-│   ├── controllers/  # Consultas y reglas de negocio
-│   ├── core/         # Base de datos, dependencias y excepciones
-│   ├── models/       # Modelos y relaciones SQLAlchemy
-│   ├── routes/       # Endpoints FastAPI
-│   ├── schemas/      # Validación y respuestas Pydantic
-│   ├── scripts/      # Migración de arranque y alta inicial de admin
-│   └── main.py       # Aplicación, routers y recursos web
-├── alembic/
-│   └── versions/     # Estado inicial, multa_pagada y tablas de identidad
-├── docs/             # GitHub Pages: interfaz y catálogo estático
+├── frontend/         # Interfaz y publicación de GitHub Pages
 │   ├── static/       # JavaScript y estilos
-│   ├── api-config.js  # Configuración de la API para la interfaz
-│   ├── catalogo.json  # Catálogo estático de respaldo
-│   └── index.html     # Página principal
+│   ├── tests/        # Pruebas de navegador Chromium
+│   ├── api-config.js # Configuración de la API para la interfaz
+│   ├── catalogo.json # Catálogo estático de respaldo
+│   └── index.html    # Página principal
+├── backend/
+│   ├── app/
+│   │   ├── controllers/ # Consultas y reglas de negocio
+│   │   ├── core/        # Conexión, dependencias y excepciones
+│   │   ├── models/      # Modelos y relaciones SQLAlchemy
+│   │   ├── routes/      # Endpoints FastAPI
+│   │   ├── schemas/     # Validación y respuestas Pydantic
+│   │   ├── scripts/     # Migración de arranque y alta inicial de admin
+│   │   └── main.py      # Aplicación, routers y recursos web
+│   ├── tests/           # Pruebas API y reglas de negocio
+│   ├── requirements.txt
+│   └── requirements-dev.txt
+├── database/
+│   ├── alembic/
+│   │   └── versions/ # Migraciones versionadas de PostgreSQL
+│   └── alembic.ini   # Configuración de migraciones
 ├── scripts/
 │   └── dev.js        # Lanzador npm para Uvicorn
 ├── .env.example      # Plantilla de configuración local
-├── .python-version   # Python 3.13 en FastAPI Cloud
-├── pyproject.toml    # Dependencias y punto de entrada FastAPI Cloud
+├── .python-version   # Versión de Python para Render
+├── pyproject.toml    # Dependencias y configuración de pruebas
 ├── package.json      # Comandos npm (sin dependencias Node)
-├── requirements.txt  # Dependencias de ejecución Python
-├── requirements-dev.txt
-│                     # Dependencias para pruebas
-├── test_main.py      # Pruebas API, interfaz y reglas de aceptación
-├── test_auth.py      # Pruebas de autenticación y permisos V2
-├── test_ui.py        # Pruebas de navegador Chromium con base aislada
+├── requirements.txt  # Referencia a backend/requirements.txt para despliegues
 └── README.md
 ```
+
+Ejecuta los comandos de instalación, inicio y pruebas desde la raíz. El punto
+de entrada de la API es `backend.app.main:app`. La configuración compartida
+(`.env`, `pyproject.toml` y `package.json`) permanece en la raíz.
+Los modelos ORM siguen dentro del backend; `database/` contiene el historial
+del esquema, no los datos de PostgreSQL. Reorganizar las carpetas no mueve ni
+borra la base de datos.
 
 ## Recursos y endpoints
 

@@ -3,6 +3,6 @@
   "private": true,
   "scripts": {
     "dev": "node scripts/dev.js",
-    "check": "node --check scripts/dev.js && node --check docs/static/app.js && node --check docs/api-config.js"
+    "check": "node --check scripts/dev.js && node --check frontend/static/app.js && node --check frontend/api-config.js"
   }
 }

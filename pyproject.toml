@@ -16,7 +16,9 @@ dependencies = [
     "SQLAlchemy==2.1.4",
     "psycopg[binary]==3.3.6",
     "python-dotenv==1.2.4",
+    "cloudinary>=1.44,<2",
+    "Pillow>=11,<13",
 ]
 
-[tool.fastapi]
-entrypoint = "app.main:app"
+[tool.pytest.ini_options]
+testpaths = ["backend/tests", "frontend/tests"]

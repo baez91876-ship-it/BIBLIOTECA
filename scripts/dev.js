@@ -1,13 +1,10 @@
-const { existsSync, readdirSync } = require("node:fs");
+const { existsSync } = require("node:fs");
 const path = require("node:path");
 const { spawn } = require("node:child_process");
 
 const projectRoot = path.resolve(__dirname, "..");
-const packageName = readdirSync(projectRoot).find(
-  (name) => name.toLowerCase() === "app"
-);
-if (!packageName) {
-  console.error("No se encontró la carpeta de la aplicación (app/ o APP/).");
+if (!existsSync(path.join(projectRoot, "backend", "app", "main.py"))) {
+  console.error("No se encontró el backend de la aplicación.");
   process.exit(1);
 }
 
@@ -25,7 +22,7 @@ const python = existsSync(virtualEnvPython)
 
 const migration = spawn(
   python,
-  ["-m", `${packageName}.scripts.migrate`],
+  ["-m", "backend.app.scripts.migrate"],
   { cwd: projectRoot, stdio: "inherit" }
 );
 
@@ -43,7 +40,7 @@ migration.on("exit", (code, signal) => {
   }
   const server = spawn(
     python,
-    ["-m", "uvicorn", `${packageName}.main:app`, "--reload"],
+    ["-m", "uvicorn", "backend.app.main:app", "--reload"],
     { cwd: projectRoot, stdio: "inherit" }
   );
   server.on("error", (error) => exitWithError(error, "iniciar Uvicorn"));
