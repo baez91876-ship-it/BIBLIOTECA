@@ -1,17 +1,13 @@
 """Ejecución común de consultas SQL paginadas."""
 
-from typing import TypeVar
-
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 from sqlalchemy.sql import Select
 
 from .dependencies import Pagination
 
-T = TypeVar("T")
 
-
-def execute_page(
+def execute_page[T](
     db: Session,
     query: Select[tuple[T]],
     pagination: Pagination,

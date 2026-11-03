@@ -8,8 +8,8 @@ from sqlalchemy.orm import Session
 
 from ..core.config import get_settings
 from ..core.exceptions import (
-    CuentaBloqueada,
     Conflicto,
+    CuentaBloqueada,
     NoAutenticado,
 )
 from ..core.security import create_token, decode_token, hash_password, verify_password

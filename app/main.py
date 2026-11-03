@@ -151,8 +151,6 @@ def versioned_health():
 @app.exception_handler(ErrorAplicacion)
 async def application_error_handler(_, exc: ErrorAplicacion):
     """Convierte excepciones de dominio en respuestas JSON con su estado HTTP."""
-    from fastapi.responses import JSONResponse
-
     return JSONResponse(
         status_code=exc.status_code,
         content={"detail": exc.detail},
