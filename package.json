@@ -2,6 +2,7 @@
   "name": "biblioteca",
   "private": true,
   "scripts": {
-    "dev": "node scripts/dev.js"
+    "dev": "node scripts/dev.js",
+    "check": "node --check scripts/dev.js && node --check docs/static/app.js && node --check docs/api-config.js"
   }
 }

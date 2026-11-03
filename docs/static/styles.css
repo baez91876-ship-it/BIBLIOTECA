@@ -100,7 +100,7 @@ h1 { margin-bottom: 7px; font-family: "Playfair Display", serif; font-size: clam
 .search-box > span { font-size: 20px; line-height: 1; }
 .search-box input { width: 100%; border: 0; outline: 0; color: var(--ink); font-size: 11px; }
 .search-box input::placeholder { color: #adb1aa; }
-.table-wrap { min-height: 190px; overflow-x: auto; }
+.table-wrap { min-height: 190px; overflow-x: auto; contain: paint; }
 table { width: 100%; border-collapse: collapse; text-align: left; }
 thead { background: #faf9f6; }
 th { height: 37px; padding: 0 20px; font-size: 9px; letter-spacing: .9px; }

@@ -134,13 +134,33 @@ a desplegar.
 
 ```powershell
 .venv\Scripts\python.exe -m pip install -r requirements-dev.txt
+.venv\Scripts\python.exe -m playwright install chromium
 .venv\Scripts\python.exe -m pytest --cov=app --cov-branch --cov-report=term-missing
+npm run check
 ```
 
 La suite incluye los 24 casos de aceptación del Taller 1, flujos CRUD V2,
 autenticación, bloqueo, rotación y reuso de refresh tokens, permisos, paginación,
-reportes, scripts de administración y manejo de errores. Usa SQLite en memoria
-para no modificar PostgreSQL. El informe muestra sentencias y ramas sin cubrir;
+reportes, scripts de administración y manejo de errores. Las pruebas de API usan
+SQLite en memoria para no modificar PostgreSQL.
+
+[`test_ui.py`](./test_ui.py) ejecuta Chromium contra un servidor FastAPI real
+con SQLite temporal y un puerto libre; cierra el navegador y el servidor al
+terminar. Comprueba catálogo, búsqueda, paginación de más de 100 libros, registro,
+permisos, inicio y cierre de sesión, rotación y caducidad de tokens, CRUD de
+libros/autores/categorías/socios, préstamos y devoluciones, errores HTTP y de red,
+catálogo de respaldo, Swagger y diseños de 390, 768 y 1440 píxeles. También
+verifica que vaciar campos opcionales al editar elimine sus valores. No requiere
+credenciales reales ni modifica los datos de PostgreSQL.
+
+Para ejecutar solo el navegador:
+
+```powershell
+.venv\Scripts\python.exe -m pytest test_ui.py -q
+```
+
+`npm run check` comprueba la sintaxis de los scripts JavaScript sin instalar
+dependencias Node. El informe de cobertura muestra sentencias y ramas sin cubrir;
 las pruebas locales no sustituyen una validación de despliegue contra PostgreSQL
 ni una comprobación de la URL pública.
 
@@ -174,6 +194,7 @@ ni una comprobación de la URL pública.
 │                     # Dependencias para pruebas
 ├── test_main.py      # Pruebas API, interfaz y reglas de aceptación
 ├── test_auth.py      # Pruebas de autenticación y permisos V2
+├── test_ui.py        # Pruebas de navegador Chromium con base aislada
 └── README.md
 ```
 

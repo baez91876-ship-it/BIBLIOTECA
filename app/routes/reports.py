@@ -7,6 +7,7 @@ from fastapi import APIRouter, Query, Request
 from ..controllers import reports
 from ..core.dependencies import PaginationDep, SessionDep
 from ..core.exceptions import ReglaNegocio
+from ..schemas.pagination import Pagina, crear_pagina
 from ..schemas.reporte import (
     AutorReporte,
     CategoriaReporte,
@@ -15,7 +16,6 @@ from ..schemas.reporte import (
     ResumenReporte,
     SocioMultas,
 )
-from ..schemas.pagination import Pagina, crear_pagina
 
 router = APIRouter(prefix="/reportes", tags=["reportes"])
 LimiteReporte = Annotated[int, Query(ge=1, le=100)]

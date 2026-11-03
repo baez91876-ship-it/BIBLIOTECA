@@ -63,7 +63,7 @@ const resources = {
       ["Nacimiento", (item) => item.anio_nacimiento],
     ],
     fields: [
-      { name: "nombre", label: "Nombre", type: "text", required: true, maxLength: 100 },
+      { name: "nombre", label: "Nombre", type: "text", required: true, minLength: 2, maxLength: 100 },
       { name: "nacionalidad", label: "Nacionalidad", type: "text", maxLength: 60 },
       { name: "anio_nacimiento", label: "Año de nacimiento", type: "number", min: 1000, max: new Date().getFullYear() },
     ],
@@ -220,11 +220,17 @@ async function renewSession() {
   }
   try {
     return await refreshInProgress;
-  } catch {
-    return false;
   } finally {
     refreshInProgress = null;
   }
+}
+
+function clearSession() {
+  accessToken = null;
+  refreshToken = null;
+  currentUser = null;
+  updateAuthentication();
+  renderBooks();
 }
 
 function showNotice(message) {
@@ -257,15 +263,16 @@ async function apiRequest(path, options = {}) {
       ...options.headers,
     },
   });
-  if (response.status === 401 && refreshToken && !retrying) {
-    if (await renewSession()) {
+  if (response.status === 401 && accessToken) {
+    if (refreshToken && !retrying && await renewSession()) {
       return apiRequest(path, { ...options, retrying: true });
     }
-    accessToken = null;
-    refreshToken = null;
-    currentUser = null;
-    updateAuthentication();
+    clearSession();
   }
+  return readApiResponse(response);
+}
+
+async function readApiResponse(response) {
   if (!response.ok) {
     let detail = `Error ${response.status}: no se pudo completar la operación.`;
     try {
@@ -274,8 +281,8 @@ async function apiRequest(path, options = {}) {
       else if (Array.isArray(body.detail)) {
         detail = body.detail.map((item) => item.msg).join(" ");
       }
-    } catch {
-      // Keep the status-based message if the response is not JSON.
+    } catch (error) {
+      if (!(error instanceof SyntaxError)) throw error;
     }
     throw new Error(detail);
   }
@@ -334,23 +341,10 @@ function renderBooks() {
     if (isStaff() && !readOnlyCatalog) {
       const actionGroup = document.createElement("div");
       actionGroup.className = "row-actions";
-      const editButton = document.createElement("button");
-      editButton.type = "button";
-      editButton.className = "icon-button";
-      editButton.dataset.action = "edit";
-      editButton.dataset.id = String(book.id);
-      editButton.setAttribute("aria-label", `Editar ${book.titulo}`);
-      editButton.title = "Editar libro";
-      editButton.textContent = "✎";
-      const deleteButton = document.createElement("button");
-      deleteButton.type = "button";
-      deleteButton.className = "icon-button delete-button";
-      deleteButton.dataset.action = "delete";
-      deleteButton.dataset.id = String(book.id);
-      deleteButton.setAttribute("aria-label", `Eliminar ${book.titulo}`);
-      deleteButton.title = "Eliminar libro";
-      deleteButton.textContent = "⌫";
-      actionGroup.append(editButton, deleteButton);
+      actionGroup.append(
+        createActionButton("edit", book.id, `Editar ${book.titulo}`, "✎"),
+        createActionButton("delete", book.id, `Eliminar ${book.titulo}`, "⌫", true),
+      );
       actions.append(actionGroup);
     }
 
@@ -376,7 +370,7 @@ function renderBooks() {
     `${visibleBooks.length} ${visibleBooks.length === 1 ? "libro" : "libros"}`;
 
   emptyState.hidden = visibleBooks.length !== 0;
-  if (books.length === 0) {
+  if (books.length === 0 && query === "") {
     emptyTitle.textContent = "Tu próxima lectura empieza aquí";
     emptyDescription.textContent = "Añade un libro para comenzar tu colección.";
     document.querySelector("#empty-add-book").hidden = !isStaff() || readOnlyCatalog;
@@ -440,6 +434,8 @@ async function loadResource(resourceName) {
   const config = resources[resourceName];
   const managementNotice = document.querySelector("#management-notice");
   managementNotice.hidden = true;
+  document.querySelector("#add-record").disabled = true;
+  managementList.replaceChildren();
   try {
     if (resourceName === "prestamos") {
       [loans, books, members] = await Promise.all([
@@ -453,8 +449,9 @@ async function loadResource(resourceName) {
       if (resourceName === "categorias") categories = records;
       if (resourceName === "socios") members = records;
     }
-    renderManagement(resourceName);
+    if (activeView === resourceName) renderManagement(resourceName);
   } catch (error) {
+    if (activeView !== resourceName) return;
     managementNotice.textContent = `No se pudieron cargar ${config.title.toLocaleLowerCase("es")}: ${error.message}`;
     managementNotice.hidden = false;
   }
@@ -511,7 +508,7 @@ function renderManagement(resourceName) {
     actions.className = "management-actions";
     const actionGroup = document.createElement("div");
     actionGroup.className = "row-actions";
-    if (record.estado !== "devuelto") {
+    if (resourceName !== "prestamos" || record.estado !== "devuelto") {
       actionGroup.append(
         createActionButton("edit", record.id, `Editar ${config.singular}`, "✎"),
       );
@@ -523,13 +520,6 @@ function renderManagement(resourceName) {
           createActionButton("return", record.id, "Registrar devolución", "✓"),
         );
       }
-    } else if (resourceName !== "prestamos") {
-      actionGroup.append(
-        createActionButton("edit", record.id, `Editar ${config.singular}`, "✎"),
-      );
-      actionGroup.append(
-        createActionButton("delete", record.id, `Eliminar ${config.singular}`, "⌫", true),
-      );
     }
     actions.append(actionGroup);
     row.append(actions);
@@ -545,7 +535,7 @@ function renderManagement(resourceName) {
   document.querySelector("#add-record").innerHTML =
     `<span aria-hidden="true">＋</span> Añadir ${config.singular}`;
   document.querySelector("#management-count").textContent =
-    `${visibleRecords.length} ${visibleRecords.length === 1 ? config.singular : `${config.singular}s`}`;
+    `${visibleRecords.length} ${visibleRecords.length === 1 ? config.singular : config.title.toLocaleLowerCase("es")}`;
   document.querySelector("#management-empty-title").textContent =
     records.length ? "No encontramos registros" : `Aún no hay ${config.title.toLocaleLowerCase("es")}`;
   document.querySelector("#management-empty-description").textContent =
@@ -583,6 +573,7 @@ function openBookDialog(book = null) {
   }
   authorSelect.value = book ? String(book.autor.id) : "";
   document.querySelector("#year").value = book?.anio_publicacion ?? "";
+  document.querySelector("#year").max = String(new Date().getFullYear());
   document.querySelector("#copies").value = book?.ejemplares ?? 1;
   const selectedCategoryIds = new Set(
     (book?.categorias ?? []).map((category) => String(category.id)),
@@ -654,7 +645,12 @@ function buildRecordPayload(fields) {
   const payload = {};
   for (const field of fields) {
     const value = document.querySelector(`#record-${field.name}`).value.trim();
-    if (value === "") continue;
+    if (value === "") {
+      if (activeRecordId !== null && !field.required) {
+        payload[field.name] = null;
+      }
+      continue;
+    }
     if (field.type === "number" || field.type === "reference") {
       payload[field.name] = Number(value);
     } else if (field.type === "boolean") {
@@ -777,13 +773,7 @@ registerForm.addEventListener("submit", async (event) => {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(Object.fromEntries(formData)),
     });
-    const result = await response.json();
-    if (!response.ok) {
-      const detail = Array.isArray(result.detail)
-        ? result.detail.map((item) => item.msg).join(" ")
-        : result.detail;
-      throw new Error(detail || `Error ${response.status}: no se pudo crear la cuenta.`);
-    }
+    await readApiResponse(response);
     const email = formData.get("email");
     registerForm.reset();
     registerDialog.close();
@@ -800,22 +790,24 @@ registerForm.addEventListener("submit", async (event) => {
   }
 });
 document.querySelector("#logout-button").addEventListener("click", async () => {
+  let logoutError = null;
   if (refreshToken) {
     try {
-      await fetchApi(`${apiBaseUrl}/api/v1/auth/logout`, {
+      const response = await fetchApi(`${apiBaseUrl}/api/v1/auth/logout`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ refresh_token: refreshToken }),
       });
+      await readApiResponse(response);
     } catch (error) {
-      showNotice(`La sesión se cerró localmente; no se pudo revocar el token: ${error.message}`);
+      logoutError = error;
     }
   }
-  accessToken = null;
-  refreshToken = null;
-  currentUser = null;
-  updateAuthentication();
+  clearSession();
   await loadBooks();
+  if (logoutError) {
+    showNotice(`La sesión se cerró localmente; no se pudo revocar el token: ${logoutError.message}`);
+  }
 });
 loginForm.addEventListener("submit", async (event) => {
   event.preventDefault();
@@ -829,25 +821,16 @@ loginForm.addEventListener("submit", async (event) => {
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
       body: new URLSearchParams(formData),
     });
-    const tokens = await response.json();
-    if (!response.ok) {
-      throw new Error(tokens.detail || `Error ${response.status}: no se pudo iniciar sesión.`);
-    }
+    const tokens = await readApiResponse(response);
     accessToken = tokens.access_token;
     refreshToken = tokens.refresh_token;
-    const profileResponse = await fetchApi(`${apiBaseUrl}/api/v1/auth/me`, {
-      headers: { Authorization: `Bearer ${accessToken}` },
-    });
-    if (!profileResponse.ok) throw new Error("No se pudo validar la sesión.");
-    currentUser = await profileResponse.json();
+    currentUser = await apiRequest("/auth/me");
     loginForm.reset();
     loginDialog.close();
     updateAuthentication();
     await loadBooks();
   } catch (error) {
-    accessToken = null;
-    refreshToken = null;
-    currentUser = null;
+    clearSession();
     loginError.textContent = error.message;
     loginError.hidden = false;
   } finally {

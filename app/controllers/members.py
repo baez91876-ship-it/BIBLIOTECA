@@ -3,12 +3,12 @@
 from datetime import UTC, datetime
 
 from sqlalchemy import select, update
-from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, joinedload
 
 from ..core.dependencies import Pagination
 from ..core.exceptions import Conflicto, NoEncontrado
 from ..core.pagination import execute_page
+from ..core.transactions import commit_or_conflict
 from ..models import Libro, Prestamo, RefreshToken, Socio, Usuario
 from ..schemas.prestamo import EstadoPrestamo
 from ..schemas.socio import SocioCreate, SocioPatch
@@ -29,7 +29,7 @@ def list_members(
         query = query.where(Socio.id == owner_id)
     if include_total:
         return execute_page(db, query, pagination)
-    return db.scalars(query.offset(pagination.skip).limit(pagination.limit)).all()
+    return list(db.scalars(query.offset(pagination.skip).limit(pagination.limit)).all())
 
 
 def get_member(member_id: int, db: Session, owner_id: int | None = None) -> Socio:
@@ -49,7 +49,7 @@ def create_member(data: SocioCreate, db: Session) -> Socio:
         raise Conflicto("El correo electrónico ya está registrado")
     member = Socio(**data.model_dump())
     db.add(member)
-    _commit(db)
+    commit_or_conflict(db, "El correo electrónico ya está registrado")
     db.refresh(member)
     return member
 
@@ -80,7 +80,7 @@ def patch_member(member_id: int, data: SocioPatch, db: Session) -> Socio:
             member.usuario.activo = value
             if not value:
                 _revoke_user_refresh_tokens(db, member.usuario.id)
-    _commit(db)
+    commit_or_conflict(db, "El correo electrónico ya está registrado")
     db.refresh(member)
     return member
 
@@ -130,9 +130,9 @@ def list_member_loans(
     query = query.order_by(Prestamo.fecha_prestamo.desc(), Prestamo.id)
     if include_total:
         return execute_page(db, query, pagination)
-    return db.scalars(
-        query.offset(pagination.skip).limit(pagination.limit)
-    ).unique().all()
+    return list(
+        db.scalars(query.offset(pagination.skip).limit(pagination.limit)).unique().all()
+    )
 
 
 def _filter_state(query, estado: EstadoPrestamo | None):
@@ -150,15 +150,6 @@ def _filter_state(query, estado: EstadoPrestamo | None):
             Prestamo.fecha_devolucion.is_(None), Prestamo.fecha_limite >= date.today()
         )
     return query
-
-
-def _commit(db: Session) -> None:
-    """Revierte la transacción y traduce correos duplicados a conflicto."""
-    try:
-        db.commit()
-    except IntegrityError as exc:
-        db.rollback()
-        raise Conflicto("El correo electrónico ya está registrado") from exc
 
 
 def _revoke_user_refresh_tokens(db: Session, user_id: int) -> None:

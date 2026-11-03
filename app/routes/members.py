@@ -6,8 +6,8 @@ from ..controllers import members
 from ..core.dependencies import ApiUserDep, PaginationDep, SessionDep
 from ..core.exceptions import NoEncontrado, ReglaNegocio
 from ..models import Prestamo, Socio
-from ..schemas.prestamo import EstadoPrestamo, PrestamoRead
 from ..schemas.pagination import Pagina, crear_pagina
+from ..schemas.prestamo import EstadoPrestamo, PrestamoRead
 from ..schemas.socio import SocioCreate, SocioPatch, SocioRead
 
 router = APIRouter(prefix="/socios", tags=["socios"])

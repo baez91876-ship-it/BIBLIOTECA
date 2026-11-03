@@ -4,8 +4,9 @@ Revision ID: 0002_multa_pagada
 Revises: 0001_estado_inicial
 """
 
-from alembic import op
 import sqlalchemy as sa
+
+from alembic import op
 
 revision = "0002_multa_pagada"
 down_revision = "0001_estado_inicial"

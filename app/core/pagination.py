@@ -1,19 +1,15 @@
 """Ejecución común de consultas SQL paginadas."""
 
-from typing import TypeVar
-
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 from sqlalchemy.sql import Select
 
 from .dependencies import Pagination
 
-T = TypeVar("T")
 
-
-def execute_page(
+def execute_page[T](
     db: Session,
-    query: Select[tuple[T]],
+    query: Select[T],
     pagination: Pagination,
 ) -> tuple[list[T], int]:
     """Ejecuta una consulta de items y su total sin aplicar límites al total."""
@@ -22,10 +18,6 @@ def execute_page(
     )
     total = db.scalar(count_query) or 0
     items = (
-        db.scalars(
-            query.offset(pagination.skip).limit(pagination.limit)
-        )
-        .unique()
-        .all()
+        db.scalars(query.offset(pagination.skip).limit(pagination.limit)).unique().all()
     )
-    return items, total
+    return list(items), total
