@@ -2,12 +2,12 @@
 
 from logging.config import fileConfig
 
+from alembic import context
 from sqlalchemy import engine_from_config, pool
 
-import app.models  # noqa: F401
-from alembic import context
-from app.core import config as config_module
-from app.core import database as database_module
+import backend.app.models  # noqa: F401
+from backend.app.core import config as config_module
+from backend.app.core import database as database_module
 
 config = context.config
 if config.config_file_name is not None:

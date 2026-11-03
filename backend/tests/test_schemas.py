@@ -3,10 +3,10 @@
 import pytest
 from pydantic import ValidationError
 
-from app.schemas.autor import AutorCreate, AutorPatch
-from app.schemas.categoria import CategoriaCreate, CategoriaPatch
-from app.schemas.libro import LibroCreate, LibroPatch, _validar_categoria_ids
-from app.schemas.socio import SocioCreate, SocioPatch
+from backend.app.schemas.autor import AutorCreate, AutorPatch
+from backend.app.schemas.categoria import CategoriaCreate, CategoriaPatch
+from backend.app.schemas.libro import LibroCreate, LibroPatch, _validar_categoria_ids
+from backend.app.schemas.socio import SocioCreate, SocioPatch
 
 
 def test_author_normalization_and_optional_patch_fields():

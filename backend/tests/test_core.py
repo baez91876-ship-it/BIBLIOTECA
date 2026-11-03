@@ -5,9 +5,9 @@ from datetime import timedelta
 import pytest
 from pydantic import ValidationError
 
-from app.core import database, security
-from app.core.config import Settings
-from app.core.exceptions import NoAutenticado
+from backend.app.core import database, security
+from backend.app.core.config import Settings
+from backend.app.core.exceptions import NoAutenticado
 
 
 def build_settings(**overrides):
@@ -35,10 +35,10 @@ def test_settings_normalize_database_driver_and_cors_origins():
     "database_url",
     [
         "sqlite:///libreria.db",
-        "postgresql://user:password@localhost/another_database",
+        "postgresql://localhost",
     ],
 )
-def test_settings_reject_non_postgresql_or_wrong_database(database_url):
+def test_settings_reject_non_postgresql_or_missing_database(database_url):
     with pytest.raises(ValidationError):
         build_settings(database_url=database_url)
 
@@ -81,10 +81,11 @@ def test_database_url_rejects_non_postgresql_driver():
         )
 
 
-def test_database_url_rejects_wrong_database_name():
-    with pytest.raises(ValueError, match="base libreria"):
-        database._parse_database_url("postgresql://localhost/another_database")
-    with pytest.raises(ValueError, match="base libreria"):
+def test_database_url_accepts_hosted_names_and_rejects_missing_database():
+    url = "postgresql://localhost/libreria_8m9y?sslmode=require"
+    assert database._parse_database_url(url).database == "libreria_8m9y"
+    assert "sslmode=require" in build_settings(database_url=url).database_url
+    with pytest.raises(ValueError, match="nombre"):
         database._parse_database_url("postgresql://localhost")
 
 

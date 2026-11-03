@@ -13,11 +13,11 @@ from playwright.sync_api import Browser, Page, Route, expect, sync_playwright
 from sqlalchemy import create_engine, select
 from sqlalchemy.orm import Session, sessionmaker
 
-from app import main
-from app.core.database import Base, get_db
-from app.core.security import hash_password
-from app.models import Autor, Categoria, Libro, Socio, Usuario
-from app.routes.auth import limiter
+from backend.app import main
+from backend.app.core.database import Base, get_db
+from backend.app.core.security import hash_password
+from backend.app.models import Autor, Categoria, Libro, Socio, Usuario
+from backend.app.routes.auth import limiter
 
 TEST_EMAIL = "admin-ui@example.com"
 TEST_PASSWORD = "BibliotecaPruebas123"
@@ -365,7 +365,7 @@ def test_api_failure_loads_static_readonly_catalog(ui: UI) -> None:
     expect(ui.page.locator("#book-list button")).to_have_count(0)
 
 
-@pytest.mark.parametrize("width", [390, 768, 1440])
+@pytest.mark.parametrize("width", [320, 390, 768, 1024, 1440, 1920])
 def test_responsive_layout_and_dialog(ui: UI, width: int) -> None:
     ui.page.set_viewport_size({"width": width, "height": 900})
     visit(ui)
@@ -375,6 +375,90 @@ def test_responsive_layout_and_dialog(ui: UI, width: int) -> None:
     assert box is not None
     assert box["x"] >= 0 and box["x"] + box["width"] <= width
     ui.page.locator("#cancel-login").click()
+    expect(ui.page.locator("#login-dialog")).not_to_be_visible()
+
+
+@pytest.mark.parametrize("width", [320, 390, 768, 1024, 1440, 1920])
+def test_readable_text_and_touch_targets_in_all_views(ui: UI, width: int) -> None:
+    ui.page.set_viewport_size({"width": width, "height": 900})
+    seed_catalog(ui)
+    ui.page.goto(ui.url)
+    sign_in(ui)
+    for view in ("libros", "autores", "categorias", "socios", "prestamos"):
+        ui.page.locator(f'[data-view="{view}"]').click()
+        if view == "libros":
+            expect(ui.page.locator("#book-list tr")).to_have_count(1)
+        else:
+            expect(ui.page.locator("#add-record")).to_be_enabled()
+        measurements = ui.page.evaluate("""() => {
+            const visible = (element) => element.getClientRects().length > 0;
+            const fonts = [...document.querySelectorAll(
+                '.nav-link, .subtitle, .button, .stat-label, .stat-detail, th, td, ' +
+                '.collection-header p, .search-box input, .table-footer, .text-button'
+            )].filter(visible).map(element => ({
+                selector: element.className || element.tagName,
+                size: parseFloat(getComputedStyle(element).fontSize)
+            }));
+            const controls = [...document.querySelectorAll('button, .search-box')]
+                .filter(visible).map(element => ({
+                    name: element.textContent.trim(),
+                    height: element.getBoundingClientRect().height,
+                    width: element.getBoundingClientRect().width
+                }));
+            return {fonts, controls,
+                overflow: document.documentElement.scrollWidth > innerWidth};
+        }""")
+        assert not measurements["overflow"], (width, view)
+        assert all(item["size"] >= 14 for item in measurements["fonts"]), measurements
+        assert all(
+            item["height"] >= 44 and item["width"] >= 44
+            for item in measurements["controls"]
+        ), measurements
+        ui.page.locator("#add-book" if view == "libros" else "#add-record").click()
+        modal = ui.page.locator(
+            "#book-dialog" if view == "libros" else "#record-dialog"
+        )
+        expect(modal).to_be_visible()
+        assert modal.locator("input, select").evaluate_all(
+            """elements => elements.every(element =>
+                parseFloat(getComputedStyle(element).fontSize) >= 16 &&
+                element.getBoundingClientRect().height >= 44)"""
+        )
+        box = modal.bounding_box()
+        assert box is not None
+        assert box["x"] >= 0 and box["x"] + box["width"] <= width
+        ui.page.keyboard.press("Escape")
+
+
+def test_text_can_scale_to_two_hundred_percent(ui: UI) -> None:
+    ui.page.set_viewport_size({"width": 640, "height": 900})
+    seed_catalog(ui)
+    ui.page.goto(ui.url)
+    sign_in(ui)
+    ui.page.add_style_tag(content=":root { font-size: 32px; }")
+    assert ui.page.evaluate("() => document.documentElement.scrollWidth <= innerWidth")
+    assert (
+        ui.page.locator("#books-view .subtitle").evaluate(
+            "element => parseFloat(getComputedStyle(element).fontSize)"
+        )
+        == 32
+    )
+    ui.page.locator("#add-book").click()
+    expect(ui.page.locator("#book-dialog")).to_be_visible()
+    ui.page.locator("#cancel-dialog").click()
+    expect(ui.page.locator("#book-dialog")).not_to_be_visible()
+
+
+def test_keyboard_focus_is_visible(ui: UI) -> None:
+    visit(ui)
+    ui.page.locator("#login-button").focus()
+    assert ui.page.locator("#login-button").evaluate(
+        """element => getComputedStyle(element).outlineStyle !== 'none' &&
+            parseFloat(getComputedStyle(element).outlineWidth) >= 2"""
+    )
+    ui.page.keyboard.press("Enter")
+    expect(ui.page.locator("#login-dialog")).to_be_visible()
+    ui.page.keyboard.press("Escape")
     expect(ui.page.locator("#login-dialog")).not_to_be_visible()
 
 

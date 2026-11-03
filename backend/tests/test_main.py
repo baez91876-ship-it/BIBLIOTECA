@@ -10,8 +10,8 @@ from sqlalchemy import create_engine, event
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
-import app.main as app_module
-from app.core import database
+import backend.app.main as app_module
+from backend.app.core import database
 
 Base = database.Base
 get_db = database.get_db

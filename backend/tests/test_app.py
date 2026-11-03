@@ -7,9 +7,9 @@ import pytest
 from fastapi import Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 
-from app import main
-from app.core import config
-from app.core.exceptions import Conflicto
+from backend.app import main
+from backend.app.core import config
+from backend.app.core.exceptions import Conflicto
 
 
 class DatabaseConnection:
@@ -57,12 +57,30 @@ def build_request():
 
 @pytest.mark.parametrize("health_endpoint", [main.health, main.versioned_health])
 def test_health_endpoints_require_the_expected_database(monkeypatch, health_endpoint):
+    monkeypatch.setattr(
+        main,
+        "settings",
+        config.Settings(_env_file=None, database_url="postgresql://localhost/libreria"),
+    )
     monkeypatch.setattr(main, "engine", DatabaseEngine("libreria"))
     assert health_endpoint() == {"status": "ok", "database": "libreria"}
 
     monkeypatch.setattr(main, "engine", DatabaseEngine("other"))
     with pytest.raises(RuntimeError, match="conectada"):
         health_endpoint()
+
+
+@pytest.mark.parametrize("health_endpoint", [main.health, main.versioned_health])
+def test_health_endpoints_support_hosted_database_names(monkeypatch, health_endpoint):
+    monkeypatch.setattr(
+        main,
+        "settings",
+        config.Settings(
+            _env_file=None, database_url="postgresql://localhost/libreria_8m9y"
+        ),
+    )
+    monkeypatch.setattr(main, "engine", DatabaseEngine("libreria_8m9y"))
+    assert health_endpoint() == {"status": "ok", "database": "libreria_8m9y"}
 
 
 def test_application_error_handler_returns_domain_status_and_message():

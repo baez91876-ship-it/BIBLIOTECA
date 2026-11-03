@@ -43,7 +43,7 @@ class Settings(BaseSettings):
     @field_validator("database_url")
     @classmethod
     def validate_database_url(cls, value: str) -> str:
-        """Limita la aplicación a PostgreSQL y normaliza la base del taller."""
+        """Valida PostgreSQL y conserva el nombre de la base configurada."""
         from sqlalchemy.engine import make_url
 
         parsed = make_url(value)
@@ -51,8 +51,8 @@ class Settings(BaseSettings):
             parsed = parsed.set(drivername="postgresql+psycopg")
         if parsed.drivername != "postgresql+psycopg":
             raise ValueError("DATABASE_URL debe usar PostgreSQL con psycopg.")
-        if parsed.database is None or parsed.database.casefold() != "libreria":
-            raise ValueError("DATABASE_URL debe apuntar a la base libreria.")
+        if not parsed.database:
+            raise ValueError("DATABASE_URL debe indicar el nombre de la base de datos.")
         return parsed.render_as_string(hide_password=False)
 
     @model_validator(mode="after")

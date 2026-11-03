@@ -13,6 +13,7 @@ from fastapi.staticfiles import StaticFiles
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from sqlalchemy import text
+from sqlalchemy.engine import make_url
 
 from . import models  # noqa: F401  # Register models in SQLAlchemy metadata.
 from .core.config import get_settings
@@ -24,14 +25,17 @@ from .routes.auth import limiter as auth_limiter
 from .routes.auth import router as auth_router
 
 logger = logging.getLogger("uvicorn.error")
-PROJECT_ROOT = Path(__file__).resolve().parent.parent
-FRONTEND_ROOT = PROJECT_ROOT / "docs"
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+FRONTEND_ROOT = PROJECT_ROOT / "frontend"
 
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     """Deja la gestión del esquema a las migraciones versionadas de Alembic."""
-    logger.info("API iniciada; el esquema debe estar actualizado con alembic upgrade head.")
+    logger.info(
+        "API iniciada; el esquema debe estar actualizado con "
+        "alembic -c database/alembic.ini upgrade head."
+    )
     yield
 
 
@@ -132,8 +136,8 @@ def health():
     """Comprueba que la base conectada sea la base esperada."""
     with engine.connect() as connection:
         database_name = connection.scalar(text("SELECT current_database()"))
-        if database_name is None or database_name.casefold() != "libreria":
-            raise RuntimeError("La aplicación no está conectada a LIBRERIA.")
+        if database_name != make_url(settings.database_url).database:
+            raise RuntimeError("La aplicación no está conectada a la base configurada.")
     return {"status": "ok", "database": database_name}
 
 
@@ -143,8 +147,8 @@ def versioned_health():
     with engine.connect() as connection:
         connection.execute(text("SELECT 1"))
         database_name = connection.scalar(text("SELECT current_database()"))
-    if database_name is None or database_name.casefold() != "libreria":
-        raise RuntimeError("La aplicación no está conectada a la base libreria.")
+    if database_name != make_url(settings.database_url).database:
+        raise RuntimeError("La aplicación no está conectada a la base configurada.")
     return {"status": "ok", "database": database_name}
 
 

@@ -9,12 +9,12 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
-import app.controllers.auth as auth_controller
-import app.routes.auth as auth_router
-from app import main, models
-from app.controllers import members as members_controller
-from app.core import database, dependencies, security
-from app.schemas.socio import SocioPatch
+import backend.app.controllers.auth as auth_controller
+import backend.app.routes.auth as auth_router
+from backend.app import main, models
+from backend.app.controllers import members as members_controller
+from backend.app.core import database, dependencies, security
+from backend.app.schemas.socio import SocioPatch
 
 
 @pytest.fixture

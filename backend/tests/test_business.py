@@ -9,23 +9,31 @@ from sqlalchemy import create_engine, literal, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from app.controllers import authors, books, categories, loans, members, reports
-from app.core.database import Base
-from app.core.dependencies import Pagination
-from app.core.exceptions import Conflicto, NoEncontrado, ReglaNegocio
-from app.core.security import hash_password
-from app.models import Autor, Categoria, Libro, Prestamo, RefreshToken, Socio, Usuario
-from app.routes.loans import listar_prestamos
-from app.schemas.autor import AutorCreate, AutorPatch
-from app.schemas.categoria import CategoriaCreate, CategoriaPatch
-from app.schemas.libro import LibroCreate, LibroPatch
-from app.schemas.prestamo import (
+from backend.app.controllers import authors, books, categories, loans, members, reports
+from backend.app.core.database import Base
+from backend.app.core.dependencies import Pagination
+from backend.app.core.exceptions import Conflicto, NoEncontrado, ReglaNegocio
+from backend.app.core.security import hash_password
+from backend.app.models import (
+    Autor,
+    Categoria,
+    Libro,
+    Prestamo,
+    RefreshToken,
+    Socio,
+    Usuario,
+)
+from backend.app.routes.loans import listar_prestamos
+from backend.app.schemas.autor import AutorCreate, AutorPatch
+from backend.app.schemas.categoria import CategoriaCreate, CategoriaPatch
+from backend.app.schemas.libro import LibroCreate, LibroPatch
+from backend.app.schemas.prestamo import (
     DevolucionCreate,
     EstadoPrestamo,
     PrestamoCreate,
     PrestamoPatch,
 )
-from app.schemas.socio import SocioCreate, SocioPatch
+from backend.app.schemas.socio import SocioCreate, SocioPatch
 
 
 @pytest.fixture

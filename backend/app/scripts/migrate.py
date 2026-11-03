@@ -2,16 +2,16 @@
 
 from pathlib import Path
 
+from alembic import command
 from alembic.config import Config
 from sqlalchemy import inspect
 
-from alembic import command
-
 from ..core import database
 
-PROJECT_ROOT = Path(__file__).resolve().parents[2]
-ALEMBIC_CONFIG = Config(str(PROJECT_ROOT / "alembic.ini"))
-ALEMBIC_CONFIG.set_main_option("script_location", str(PROJECT_ROOT / "alembic"))
+PROJECT_ROOT = Path(__file__).resolve().parents[3]
+DATABASE_ROOT = PROJECT_ROOT / "database"
+ALEMBIC_CONFIG = Config(str(DATABASE_ROOT / "alembic.ini"))
+ALEMBIC_CONFIG.set_main_option("script_location", str(DATABASE_ROOT / "alembic"))
 LEGACY_COLUMNS = {
     "autores": {"id", "nombre", "nacionalidad", "anio_nacimiento"},
     "categorias": {"id", "nombre", "descripcion"},

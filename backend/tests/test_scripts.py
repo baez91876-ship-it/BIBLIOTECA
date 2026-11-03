@@ -1,16 +1,18 @@
 """Pruebas aisladas para los comandos de administración y migración."""
 
 import runpy
+from pathlib import Path
 
 import pytest
+from alembic.script import ScriptDirectory
 from sqlalchemy import Column, MetaData, String, Table, create_engine, select
 from sqlalchemy.orm import sessionmaker
 
-import app.scripts.crear_admin as create_admin
-from app.core.database import Base
-from app.core.security import verify_password
-from app.models import Usuario
-from app.scripts import migrate
+import backend.app.scripts.crear_admin as create_admin
+from backend.app.core.database import Base
+from backend.app.core.security import verify_password
+from backend.app.models import Usuario
+from backend.app.scripts import migrate
 
 
 @pytest.fixture
@@ -105,7 +107,7 @@ def test_create_admin_module_entrypoint_runs_with_secure_prompts(
 ):
     import getpass
 
-    from app.core import database
+    from backend.app.core import database
 
     provide_admin_input(
         monkeypatch,
@@ -118,7 +120,7 @@ def test_create_admin_module_entrypoint_runs_with_secure_prompts(
     passwords = iter(("BibliotecaSegura123", "BibliotecaSegura123"))
     monkeypatch.setattr(getpass, "getpass", lambda _: next(passwords))
 
-    runpy.run_module("app.scripts.crear_admin", run_name="__main__")
+    runpy.run_module("backend.app.scripts.crear_admin", run_name="__main__")
 
     assert "Administrador creado correctamente." in capsys.readouterr().out
     with admin_database() as db:
@@ -129,7 +131,7 @@ def test_create_admin_entrypoint_reports_invalid_email(monkeypatch):
     monkeypatch.setattr("builtins.input", lambda _: "invalid-email")
 
     with pytest.raises(SystemExit):
-        runpy.run_module("app.scripts.crear_admin", run_name="__main__")
+        runpy.run_module("backend.app.scripts.crear_admin", run_name="__main__")
 
 
 @pytest.fixture
@@ -223,7 +225,7 @@ def test_migration_main_stamps_then_upgrades(migration_database, monkeypatch):
 
 
 def test_migration_module_entrypoint_runs(migration_database, monkeypatch):
-    from app.core import database
+    from backend.app.core import database
 
     engine, _ = migration_database
     upgrades = []
@@ -234,6 +236,17 @@ def test_migration_module_entrypoint_runs(migration_database, monkeypatch):
         lambda config, revision: upgrades.append(revision),
     )
 
-    runpy.run_module("app.scripts.migrate", run_name="__main__")
+    runpy.run_module("backend.app.scripts.migrate", run_name="__main__")
 
     assert upgrades == ["head"]
+
+
+def test_migration_configuration_resolves_reorganized_database_directory():
+    root = Path(__file__).resolve().parents[2]
+    assert (
+        Path(migrate.ALEMBIC_CONFIG.config_file_name)
+        == root / "database" / "alembic.ini"
+    )
+    scripts = ScriptDirectory.from_config(migrate.ALEMBIC_CONFIG)
+    assert Path(scripts.dir) == root / "database" / "alembic"
+    assert scripts.get_current_head() == "0003_usuarios_y_refresh_tokens"
