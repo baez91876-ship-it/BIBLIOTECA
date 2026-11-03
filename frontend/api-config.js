@@ -1,2 +1,2 @@
-// Configura el dominio público de FastAPI Cloud después del primer despliegue.
+// En GitHub Pages configura la URL de Render; en la API usa el mismo origen.
 window.BIBLIOTECA_API_URL = "";

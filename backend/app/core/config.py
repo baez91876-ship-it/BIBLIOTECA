@@ -15,6 +15,7 @@ class Settings(BaseSettings):
         env_file_encoding="utf-8",
         extra="ignore",
         enable_decoding=False,
+        hide_input_in_errors=True,
     )
 
     database_url: str
@@ -47,7 +48,7 @@ class Settings(BaseSettings):
         from sqlalchemy.engine import make_url
 
         parsed = make_url(value)
-        if parsed.drivername == "postgresql":
+        if parsed.drivername in {"postgres", "postgresql"}:
             parsed = parsed.set(drivername="postgresql+psycopg")
         if parsed.drivername != "postgresql+psycopg":
             raise ValueError("DATABASE_URL debe usar PostgreSQL con psycopg.")

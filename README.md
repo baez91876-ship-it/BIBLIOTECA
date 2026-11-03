@@ -62,7 +62,7 @@ La interfaz estática está organizada en `frontend/` y se publica en cada cambi
 `main` con [`.github/workflows/pages.yml`](./.github/workflows/pages.yml). En
 **Settings → Pages → Build and deployment**, selecciona **GitHub Actions** como
 fuente. La API FastAPI y PostgreSQL no se ejecutan en Pages: la API se despliega
-por separado en FastAPI Cloud.
+por separado en Render.
 
 La página publicada está en
 <https://baez91876-ship-it.github.io/BIBLIOTECA/>. El repositorio se llama
@@ -75,59 +75,68 @@ La URL de la API para GitHub Pages se configura en
 [`frontend/api-config.js`](./frontend/api-config.js). Pages no conserva credenciales;
 para operaciones de administración inicia sesión en la interfaz desplegada.
 
-## Desplegar en FastAPI Cloud
+## Desplegar en Render
 
-FastAPI Cloud despliega aplicaciones FastAPI con el comando `fastapi deploy`.
-La dependencia `fastapi[standard]` de `requirements.txt` ya incluye el CLI.
-El punto de entrada está configurado en [`pyproject.toml`](./pyproject.toml) y
-Python 3.13 en [`.python-version`](./.python-version). Instala los requisitos en
-Windows y ejecuta el comando desde la raíz:
+El archivo local `.env` no se sube a GitHub ni se copia a Render. Si aparece
+`ValidationError: ... Settings`, revisa el campo que indica el log:
+`database_url` con `Field required` significa que falta `DATABASE_URL`;
+`jwt_secret_key` o el mensaje de clave aleatoria indica una clave ausente,
+corta o de ejemplo. No publiques los valores de esas variables en los logs.
+
+### Con Blueprint
+
+En Render selecciona **New → Blueprint**, conecta este repositorio y elige
+la rama `version-2`. El archivo [`render.yaml`](./render.yaml) configura el
+servicio sin crear otra base de datos. Cuando Render solicite `DATABASE_URL`,
+pega la URL de la base PostgreSQL existente desde su panel **Connect**.
+El Blueprint genera `JWT_SECRET_KEY` y configura `APP_ENV=production`.
+
+### Si el Web Service ya existe
+
+Los cambios del Blueprint no se aplican automáticamente a un servicio creado
+manualmente. En **Settings** configura:
+
+- **Branch:** `version-2`.
+- **Root Directory:** vacío (raíz del repositorio).
+- **Build Command:** `python -m pip install -r requirements.txt`.
+- **Start Command:** `python -m backend.app.scripts.migrate && python -m uvicorn backend.app.main:app --host 0.0.0.0 --port $PORT`.
+- **Health Check Path:** `/api/v1/health`.
+
+En **Environment** agrega:
+
+| Variable | Valor |
+|---|---|
+| `DATABASE_URL` | URL PostgreSQL de Render, sin comillas envolventes |
+| `JWT_SECRET_KEY` | Clave aleatoria propia de al menos 32 caracteres |
+| `APP_ENV` | `production` |
+| `CORS_ALLOWED_ORIGINS` | `https://baez91876-ship-it.github.io` si usas GitHub Pages |
+
+Puedes generar la clave localmente con
+`python -c "import secrets; print(secrets.token_urlsafe(48))"` y guardarla solo
+en **Environment**. Conserva la misma clave entre despliegues. Usa la URL interna
+si el servicio y la base están en la misma región de Render; para acceso externo,
+usa la URL externa con `sslmode=require`. Se admiten los prefijos `postgres://`,
+`postgresql://` y `postgresql+psycopg://`.
+
+Guarda y selecciona **Manual Deploy → Deploy latest commit** después de subir
+estos cambios. El arranque aplica las migraciones antes de abrir el puerto y
+se detiene si fallan; no borra tablas ni importa datos.
+Comprueba `https://TU-SERVICIO.onrender.com/api/v1/health` y la página `/`.
+Para servir también la interfaz, no necesitas otro servicio ni cambiar
+[`frontend/api-config.js`](./frontend/api-config.js): la interfaz usa la API
+del mismo origen.
+
+Para crear el primer administrador, desde la raíz y con `DATABASE_URL`
+configurada en el entorno local, ejecuta:
 
 ```powershell
-$env:PYTHONUTF8 = "1"
-python -m venv .venv
-.venv\Scripts\python.exe -m pip install -r requirements.txt
-.venv\Scripts\fastapi.exe deploy
-```
-
-Inicia sesión o crea una cuenta cuando el CLI abra el navegador y sigue las
-indicaciones para crear la aplicación. El primer despliegue crea el vínculo
-local `.fastapicloud`. Si la aplicación informa que faltan variables al iniciar,
-configúralas para esa aplicación antes de desplegar de nuevo. Puedes hacerlo
-desde **App Details → Environment Variables** en el Dashboard o con el CLI:
-
-```powershell
-.venv\Scripts\fastapi.exe cloud env set --secret --no-redeploy DATABASE_URL
-.venv\Scripts\fastapi.exe cloud env set --secret --no-redeploy JWT_SECRET_KEY
-.venv\Scripts\fastapi.exe cloud env set --no-redeploy APP_ENV production
-.venv\Scripts\fastapi.exe cloud env set --no-redeploy CORS_ALLOWED_ORIGINS https://baez91876-ship-it.github.io
-```
-
-El CLI solicita los valores secretos sin mostrarlos. Configura estas variables:
-
-- `DATABASE_URL`: URL de PostgreSQL, con el nombre de la base asignada. FastAPI
-  Cloud ofrece integraciones con Neon y Supabase; confirma que la conexión
-  seleccionada use la base deseada y SSL para conexiones externas.
-- `JWT_SECRET_KEY`: clave aleatoria de al menos 32 caracteres.
-- `APP_ENV`: `production`.
-- `CORS_ALLOWED_ORIGINS`: `https://baez91876-ship-it.github.io`.
-
-FastAPI Cloud aplica los cambios de variables en el siguiente despliegue. Antes
-de desplegar de nuevo, aplica las migraciones a esa misma base. Copia la URL
-`DATABASE_URL` en tu `.env` local ignorado por Git (sin reemplazar otros valores
-locales) y ejecuta:
-
-```powershell
-.venv\Scripts\python.exe -m backend.app.scripts.migrate
 .venv\Scripts\python.exe -m backend.app.scripts.crear_admin
-.venv\Scripts\fastapi.exe deploy
 ```
 
 El comando de alta solicita correo, nombre y contraseña sin mostrarla. No existe
 una contraseña inicial ni una ruta pública para asignar roles privilegiados.
-Después del despliegue, comprueba `/api/v1/health` y `/docs` en el dominio
-`.fastapicloud.dev` asignado a la aplicación. Para habilitar el inicio de sesión
-desde GitHub Pages, actualiza `window.BIBLIOTECA_API_URL` en
+Para habilitar el inicio de sesión desde GitHub Pages, actualiza
+`window.BIBLIOTECA_API_URL` en
 [`frontend/api-config.js`](./frontend/api-config.js) con ese dominio HTTPS y sube el
 cambio. Si cambia el dominio, actualiza también `CORS_ALLOWED_ORIGINS` y vuelve
 a desplegar.
@@ -198,8 +207,8 @@ ni una comprobación de la URL pública.
 ├── scripts/
 │   └── dev.js        # Lanzador npm para Uvicorn
 ├── .env.example      # Plantilla de configuración local
-├── .python-version   # Python 3.13 en FastAPI Cloud
-├── pyproject.toml    # Dependencias y punto de entrada FastAPI Cloud
+├── .python-version   # Versión de Python para Render
+├── pyproject.toml    # Dependencias y configuración de pruebas
 ├── package.json      # Comandos npm (sin dependencias Node)
 ├── requirements.txt  # Referencia a backend/requirements.txt para despliegues
 └── README.md

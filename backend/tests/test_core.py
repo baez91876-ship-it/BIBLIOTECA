@@ -89,6 +89,48 @@ def test_database_url_accepts_hosted_names_and_rejects_missing_database():
         database._parse_database_url("postgresql://localhost")
 
 
+@pytest.mark.parametrize("scheme", ["postgres", "postgresql", "postgresql+psycopg"])
+def test_render_environment_without_dotenv(monkeypatch, scheme):
+    monkeypatch.setenv(
+        "DATABASE_URL", f"{scheme}://localhost/libreria_8m9y?sslmode=require"
+    )
+    monkeypatch.setenv(
+        "JWT_SECRET_KEY", "a-generated-secret-with-at-least-32-characters"
+    )
+    monkeypatch.setenv("APP_ENV", "production")
+    monkeypatch.setenv("CORS_ALLOWED_ORIGINS", "https://baez91876-ship-it.github.io")
+
+    settings = Settings(_env_file=None)
+
+    assert settings.database_url == (
+        "postgresql+psycopg://localhost/libreria_8m9y?sslmode=require"
+    )
+    assert settings.app_env == "production"
+    assert settings.cors_origins == ["https://baez91876-ship-it.github.io"]
+    assert (
+        database._parse_database_url(f"{scheme}://localhost/libreria_8m9y").drivername
+        == "postgresql+psycopg"
+    )
+
+
+def test_missing_render_database_url_is_rejected(monkeypatch):
+    monkeypatch.delenv("DATABASE_URL", raising=False)
+    with pytest.raises(ValidationError) as error:
+        Settings(_env_file=None)
+    assert any(
+        item["loc"] == ("database_url",) and item["type"] == "missing"
+        for item in error.value.errors(include_input=False)
+    )
+
+
+def test_configuration_errors_do_not_print_credentials():
+    url = "mysql://demo:do-not-print-this-password@localhost/library"
+    with pytest.raises(ValidationError) as error:
+        build_settings(database_url=url)
+    assert "do-not-print-this-password" not in str(error.value)
+    assert "input_value" not in str(error.value)
+
+
 def test_access_token_round_trip_and_wrong_token_type():
     token, token_id, _ = security.create_token(
         42,

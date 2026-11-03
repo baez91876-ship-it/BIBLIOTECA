@@ -10,7 +10,7 @@ from .config import get_settings
 def _parse_database_url(value: str) -> URL:
     """Valida PostgreSQL y selecciona el controlador psycopg 3."""
     database_url = make_url(value)
-    if database_url.drivername == "postgresql":
+    if database_url.drivername in {"postgres", "postgresql"}:
         database_url = database_url.set(drivername="postgresql+psycopg")
     if database_url.drivername != "postgresql+psycopg":
         raise ValueError("La aplicación solo puede conectarse a PostgreSQL.")

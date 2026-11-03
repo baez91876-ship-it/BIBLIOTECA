@@ -18,8 +18,5 @@ dependencies = [
     "python-dotenv==1.2.4",
 ]
 
-[tool.fastapi]
-entrypoint = "backend.app.main:app"
-
 [tool.pytest.ini_options]
 testpaths = ["backend/tests", "frontend/tests"]
