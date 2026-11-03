@@ -4,8 +4,9 @@ Revision ID: 0003_usuarios_y_refresh_tokens
 Revises: 0002_multa_pagada
 """
 
-from alembic import op
 import sqlalchemy as sa
+
+from alembic import op
 
 revision = "0003_usuarios_y_refresh_tokens"
 down_revision = "0002_multa_pagada"
