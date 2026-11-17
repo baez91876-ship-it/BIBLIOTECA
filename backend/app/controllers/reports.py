@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 
 from ..core.dependencies import Pagination
 from ..models import Autor, Categoria, Libro, Prestamo, Socio, libro_categoria
+from ..models.prestamo import MULTA_DIARIA
 
 
 def most_borrowed_books(
@@ -86,8 +87,9 @@ def members_with_fines(
     db: Session, pagination: Pagination, include_total: bool = False
 ) -> list[dict] | tuple[list[dict], int]:
     """Agrupa multas positivas por socio y ordena por importe acumulado."""
-    fine_total = func.sum(Prestamo.multa)
-    fine_loans = func.count(case((Prestamo.multa > 0, Prestamo.id)))
+    fine = _fine_expression(db)
+    fine_total = func.sum(fine)
+    fine_loans = func.count(case((fine > 0, Prestamo.id)))
     query = (
         select(
             Socio.id.label("socio_id"),
@@ -183,7 +185,7 @@ def library_summary(db: Session) -> dict:
         .scalar_subquery()
         .label("socios_activos"),
         overdue.label("prestamos_vencidos"),
-        select(func.coalesce(func.sum(Prestamo.multa), 0))
+        select(func.coalesce(func.sum(_fine_expression(db)), 0))
         .select_from(Prestamo)
         .scalar_subquery()
         .label("multas_totales"),
@@ -199,6 +201,15 @@ def _days_late_expression(db: Session):
     return func.cast(
         func.julianday(today) - func.julianday(Prestamo.fecha_limite),
         Integer,
+    )
+
+
+def _fine_expression(db: Session):
+    """Incluye multas provisionales de préstamos vencidos y finales devueltas."""
+    return case(
+        (Prestamo.fecha_devolucion.is_not(None), Prestamo.multa),
+        (Prestamo.fecha_limite < date.today(), _days_late_expression(db) * MULTA_DIARIA),
+        else_=0,
     )
 
 

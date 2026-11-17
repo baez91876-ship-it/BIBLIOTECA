@@ -56,6 +56,21 @@ bibliotecario o administrador para gestionar el catálogo y las operaciones
 internas. El acceso dura 15 minutos y la interfaz rota el refresh token; al
 cerrar sesión revoca ese token.
 
+## Interfaz Vue 3
+
+La nueva interfaz de libros (catálogo, búsqueda, login JWT con refresh, CRUD y
+portadas) está en [`web/`](./web) con Vite + Vue 3. La interfaz anterior sigue en `/`.
+
+```powershell
+npm run web:install   # una vez
+npm run web:build     # genera web/dist; FastAPI la sirve en /app/
+npm run web:test      # pruebas con Vitest
+npm run web:dev       # Vite en :5173 con proxy a la API en :8000
+```
+
+Reinicia `npm run dev` después de la primera compilación para que se monte `/app/`.
+En Render añade `npm --prefix web ci && npm --prefix web run build` al build.
+
 ## Portadas con Cloudinary
 
 En el formulario de libros, un bibliotecario o administrador puede seleccionar
@@ -103,10 +118,14 @@ La página publicada está en
 `BIBLIOTECA`; la URL anterior con `BIBBLIOTECA` ya no es válida.
 
 Si la API no responde o todavía no se configura su URL, la interfaz muestra el
-catálogo guardado en modo de solo lectura.
+catálogo guardado en modo de solo lectura. Si la URL está configurada, usa
+**Actualizar lista** para reintentar la conexión cuando el servicio vuelva.
 
 La URL de la API para GitHub Pages se configura en
-[`frontend/api-config.js`](./frontend/api-config.js). Pages no conserva credenciales;
+[`frontend/api-config.js`](./frontend/api-config.js) y apunta a
+`https://biblioteca-h6a3.onrender.com`. El servicio de Render debe tener
+`CORS_ALLOWED_ORIGINS=https://baez91876-ship-it.github.io` y reiniciarse tras
+cambiar esa variable. Pages no conserva credenciales;
 para operaciones de administración inicia sesión en la interfaz desplegada.
 
 ## Desplegar en Render
@@ -299,11 +318,16 @@ menos préstamos sin devolver.
   el futuro. Se rechaza si el socio está inactivo, tiene préstamos vencidos,
   tres préstamos sin devolver, ya pidió ese mismo libro o no hay ejemplares.
 - El estado del préstamo se calcula como `activo`, `vencido` o `devuelto`.
-- La multa por devolución tardía es de 0,50 por cada día de retraso.
+- La multa es cero hasta la fecha límite, inclusive. Desde el día siguiente se
+  muestra una multa provisional de 20 pesos colombianos (COP) por día de retraso en los préstamos y
+  reportes; al devolver el libro queda fijada según la fecha de devolución, que
+  no puede ser futura. Las multas de devoluciones ya registradas conservan su importe.
 - Un socio con préstamos devueltos se desactiva al eliminarse; uno con préstamos
   sin devolver no se puede eliminar. No se permite borrar autores con libros ni
   libros con préstamos asociados.
 - Los préstamos abiertos permiten cambiar la fecha límite o eliminarlos. Los
   préstamos devueltos son inmutables para conservar el historial.
+- El personal puede editar los ejemplares desde la casilla de cada libro; no
+  pueden reducirse por debajo de los préstamos sin devolver.
 - Los controladores lanzan excepciones propias; un manejador global devuelve
   errores de aplicación como `{ "detail": "mensaje" }`.

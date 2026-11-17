@@ -11,6 +11,7 @@ from ..core.exceptions import Conflicto, NoEncontrado, ReglaNegocio
 from ..core.pagination import execute_page
 from ..core.transactions import commit_or_conflict
 from ..models import Libro, Prestamo, Socio
+from ..models.prestamo import calcular_multa
 from ..schemas.prestamo import (
     DevolucionCreate,
     EstadoPrestamo,
@@ -138,7 +139,7 @@ def create_loan(data: PrestamoCreate, db: Session) -> Prestamo:
 
 
 def return_loan(loan_id: int, data: DevolucionCreate, db: Session) -> Prestamo:
-    """Registra la devolución y calcula 0,50 por cada día de retraso."""
+    """Registra la devolución y calcula la multa por cada día de retraso."""
     loan = db.scalar(select(Prestamo).where(Prestamo.id == loan_id).with_for_update())
     if loan is None:
         raise NoEncontrado("Préstamo no encontrado")
@@ -146,9 +147,10 @@ def return_loan(loan_id: int, data: DevolucionCreate, db: Session) -> Prestamo:
         raise Conflicto("El préstamo ya fue devuelto")
     if data.fecha_devolucion < loan.fecha_prestamo:
         raise ReglaNegocio("La devolución no puede ser anterior al préstamo")
-    late_days = max((data.fecha_devolucion - loan.fecha_limite).days, 0)
+    if data.fecha_devolucion > date.today():
+        raise ReglaNegocio("La fecha de devolución no puede ser futura")
     loan.fecha_devolucion = data.fecha_devolucion
-    loan.multa = Decimal(late_days) * Decimal("0.50")
+    loan.multa = calcular_multa(loan.fecha_limite, data.fecha_devolucion)
     commit_or_conflict(db, "No se pudo guardar el préstamo")
     return get_loan(loan.id, db)
 

@@ -106,6 +106,11 @@ if settings.app_env.casefold() != "production":
 
 app.mount("/static", StaticFiles(directory=FRONTEND_ROOT / "static"), name="static")
 
+# Interfaz Vue 3 compilada con `npm run web:build`; solo se sirve si existe.
+VUE_DIST = PROJECT_ROOT / "web" / "dist"
+if VUE_DIST.is_dir():
+    app.mount("/app", StaticFiles(directory=VUE_DIST, html=True), name="vue-app")
+
 
 @app.get("/", include_in_schema=False)
 def interfaz():

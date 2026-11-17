@@ -45,7 +45,9 @@ async function fetchApi(url, options) {
   } catch (error) {
     if (error instanceof TypeError) {
       throw new Error(
-        "No se pudo conectar con la API de biblioteca. Comprueba que el servicio de Render esté activo, que la URL configurada sea correcta y que CORS permita GitHub Pages.",
+        apiBaseUrl
+          ? "No se pudo conectar con la API de biblioteca. Comprueba la URL configurada, el servicio y CORS."
+          : "No se pudo conectar con la API de biblioteca. Comprueba que npm run dev esté ejecutándose y vuelve a intentarlo.",
         { cause: error },
       );
     }
@@ -115,7 +117,10 @@ const resources = {
       ["Préstamo", (item) => item.fecha_prestamo],
       ["Fecha límite", (item) => item.fecha_limite],
       ["Estado", (item) => item.estado],
-      ["Multa", (item) => `$${Number(item.multa).toFixed(2)}`],
+      ["Multa", (item) => new Intl.NumberFormat("es-CO", {
+        style: "currency", currency: "COP", currencyDisplay: "code", minimumFractionDigits: 0,
+        maximumFractionDigits: 2,
+      }).format(Number(item.multa))],
     ],
     fields: [
       { name: "libro_id", label: "Libro", type: "reference", source: "libros", required: true },
@@ -174,7 +179,7 @@ function configureReadOnlyCatalog() {
   document.querySelector("#connection-label").textContent = "Catálogo estático";
   document.querySelector("#database-label").textContent = "Solo lectura";
   document.querySelector("#add-book").hidden = true;
-  document.querySelector("#refresh-books").hidden = true;
+  document.querySelector("#refresh-books").hidden = pagesApiNotConfigured;
   document.querySelector("#add-record").hidden = true;
   document.querySelector("#refresh-records").hidden = true;
   document.querySelector("#api-docs").hidden = true;
@@ -358,12 +363,34 @@ function renderBooks() {
       actions.append(actionGroup);
     }
 
+    const copiesCell = createCell(String(book.ejemplares));
+    if (isStaff() && !readOnlyCatalog) {
+      const copiesForm = document.createElement("form");
+      copiesForm.className = "copies-form";
+      copiesForm.dataset.id = String(book.id);
+      const input = document.createElement("input");
+      input.type = "number";
+      input.min = "1";
+      input.max = "50";
+      input.required = true;
+      input.value = String(book.ejemplares);
+      input.setAttribute("aria-label", `Ejemplares de ${book.titulo}`);
+      const save = document.createElement("button");
+      save.type = "submit";
+      save.className = "icon-button";
+      save.setAttribute("aria-label", `Guardar ejemplares de ${book.titulo}`);
+      save.title = "Guardar ejemplares";
+      save.textContent = "✓";
+      copiesForm.append(input, save);
+      copiesCell.replaceChildren(copiesForm);
+    }
+
     row.append(
       titleCell,
       createCell(book.autor.nombre),
       createCell(String(book.anio_publicacion)),
       createCell(book.isbn),
-      createCell(String(book.ejemplares)),
+      copiesCell,
       createCell(book.categorias.map((category) => category.nombre).join(", ") || "—"),
       actions,
     );
@@ -394,7 +421,7 @@ function renderBooks() {
 async function loadBooks() {
   // Carga el catálogo estático o combina los recursos de la API en vivo.
   hideNotice();
-  if (readOnlyCatalog) {
+  if (pagesApiNotConfigured) {
     try {
       await loadStaticCatalog(
         "Catálogo estático. Vista de solo lectura; los cambios requieren una API pública.",
@@ -405,12 +432,19 @@ async function loadBooks() {
     return;
   }
 
+  readOnlyCatalog = false;
   try {
     [books, authors, categories] = await Promise.all([
       listAll("/libros"),
       listAll("/autores"),
       listAll("/categorias"),
     ]);
+    document.querySelector("#connection-label").textContent = "Biblioteca conectada";
+    document.querySelector("#database-label").textContent = "PostgreSQL";
+    document.querySelector("#refresh-books").hidden = false;
+    document.querySelector("#refresh-records").hidden = false;
+    document.querySelector("#api-docs").hidden = false;
+    updateAuthentication();
     renderBooks();
   } catch (error) {
     configureReadOnlyCatalog();
@@ -445,6 +479,7 @@ async function loadResource(resourceName) {
   const managementNotice = document.querySelector("#management-notice");
   managementNotice.hidden = true;
   document.querySelector("#add-record").disabled = true;
+  document.querySelector("#management-title").firstChild.textContent = config.title;
   managementList.replaceChildren();
   try {
     if (resourceName === "prestamos") {
@@ -551,8 +586,15 @@ function renderManagement(resourceName) {
   document.querySelector("#management-empty-description").textContent =
     records.length ? "Prueba con otro término de búsqueda." : `Añade el primer ${config.singular}.`;
   document.querySelector("#management-empty").hidden = visibleRecords.length !== 0;
-  document.querySelector("#add-record").disabled =
+  const cannotLend =
     resourceName === "prestamos" && (books.length === 0 || !members.some((member) => member.activo));
+  document.querySelector("#add-record").disabled = cannotLend;
+  const managementNotice = document.querySelector("#management-notice");
+  if (cannotLend) {
+    managementNotice.textContent =
+      "Para crear un préstamo necesitas al menos un libro y un socio activo.";
+    managementNotice.hidden = false;
+  }
 }
 
 function createActionButton(action, id, label, symbol, destructive = false) {
@@ -761,6 +803,27 @@ form.addEventListener("submit", async (event) => {
     errorMessage.hidden = false;
   } finally {
     saveButton.disabled = false;
+  }
+});
+
+bookList.addEventListener("submit", async (event) => {
+  const copiesForm = event.target.closest(".copies-form");
+  if (!copiesForm) return;
+  event.preventDefault();
+  const save = copiesForm.querySelector("button");
+  const input = copiesForm.querySelector("input");
+  save.disabled = true;
+  hideNotice();
+  try {
+    await apiRequest(`/libros/${copiesForm.dataset.id}`, {
+      method: "PATCH",
+      body: JSON.stringify({ ejemplares: Number(input.value) }),
+    });
+    await loadBooks();
+  } catch (error) {
+    showNotice(`No se pudieron guardar los ejemplares: ${error.message}`);
+  } finally {
+    save.disabled = false;
   }
 });
 

@@ -6,6 +6,7 @@ import importlib
 import pytest
 from fastapi import Request, Response
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.testclient import TestClient
 
 from backend.app import main
 from backend.app.core import config
@@ -156,6 +157,17 @@ def test_production_configuration_enables_cors_and_omits_legacy_routes(monkeypat
         assert any(
             middleware.cls is CORSMiddleware for middleware in main.app.user_middleware
         )
+        with TestClient(main.app) as client:
+            response = client.options(
+                "/api/v1/libros",
+                headers={
+                    "Origin": "https://library.example",
+                    "Access-Control-Request-Method": "POST",
+                    "Access-Control-Request-Headers": "authorization,content-type",
+                },
+            )
+            assert response.status_code == 200
+            assert response.headers["access-control-allow-origin"] == "https://library.example"
         paths = main.app.openapi()["paths"]
         assert "/autores" not in paths
         assert "/api/v1/autores" in paths

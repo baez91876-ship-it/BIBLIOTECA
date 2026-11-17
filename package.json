@@ -3,6 +3,10 @@
   "private": true,
   "scripts": {
     "dev": "node scripts/dev.js",
+    "web:install": "npm --prefix web install",
+    "web:dev": "npm --prefix web run dev",
+    "web:build": "npm --prefix web run build",
+    "web:test": "npm --prefix web test",
     "check": "node --check scripts/dev.js && node --check frontend/static/app.js && node --check frontend/api-config.js"
   }
 }

@@ -12,6 +12,7 @@ from sqlalchemy.pool import StaticPool
 
 import backend.app.main as app_module
 from backend.app.core import database
+from backend.app.models import Autor, Categoria, Libro, Prestamo, Socio
 
 Base = database.Base
 get_db = database.get_db
@@ -86,6 +87,75 @@ class BibliotecaApiTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertIn("window.BIBLIOTECA_API_URL = '';", response.text)
         self.assertNotIn("onrender.com", response.text)
+
+    def test_multas_solo_despues_del_vencimiento(self):
+        today = date.today()
+        with self.session_factory() as db:
+            book = Libro(
+                titulo="Libro De Prueba",
+                isbn="9780000000001",
+                anio_publicacion=2020,
+                ejemplares=4,
+                autor=Autor(nombre="Autor Prueba"),
+                categorias=[Categoria(nombre="novela")],
+            )
+            member = Socio(nombre="Socio Prueba", email="socio@example.com")
+            db.add_all([book, member])
+            db.flush()
+            loans = [
+                Prestamo(
+                    libro_id=book.id,
+                    socio_id=member.id,
+                    fecha_prestamo=today - timedelta(days=10),
+                    fecha_limite=due,
+                    fecha_devolucion=returned,
+                    multa=0,
+                )
+                for due, returned in (
+                    (today - timedelta(days=1), None),
+                    (today, None),
+                    (today + timedelta(days=1), None),
+                    (today, today - timedelta(days=1)),
+                )
+            ]
+            db.add_all(loans)
+            db.commit()
+            ids = [loan.id for loan in loans]
+
+        for loan_id, fine in zip(ids, (20, 0, 0, 0), strict=True):
+            self.assertEqual(self.client.get(f"/prestamos/{loan_id}").json()["multa"], fine)
+        report = self.client.get("/reportes/socios-con-multas").json()[0]
+        self.assertEqual(report["total_multas"], 20)
+        self.assertEqual(report["prestamos_con_multa"], 1)
+        self.assertEqual(self.client.get("/reportes/resumen").json()["multas_totales"], 20)
+
+        future_return = self.client.post(
+            f"/prestamos/{ids[1]}/devolucion",
+            json={"fecha_devolucion": (today + timedelta(days=1)).isoformat()},
+        )
+        self.assertEqual(future_return.status_code, 422)
+        self.assertEqual(self.client.get(f"/prestamos/{ids[1]}").json()["multa"], 0)
+
+        for loan_id in ids[1:3]:
+            returned = self.client.post(
+                f"/prestamos/{loan_id}/devolucion",
+                json={"fecha_devolucion": today.isoformat()},
+            )
+            self.assertEqual(returned.json()["multa"], 0)
+
+        self.client.patch(f"/prestamos/{ids[0]}", json={"fecha_limite": today.isoformat()})
+        self.assertEqual(self.client.get(f"/prestamos/{ids[0]}").json()["multa"], 0)
+        self.assertEqual(self.client.get("/reportes/socios-con-multas").json(), [])
+        self.client.patch(
+            f"/prestamos/{ids[0]}",
+            json={"fecha_limite": (today - timedelta(days=1)).isoformat()},
+        )
+        returned = self.client.post(
+            f"/prestamos/{ids[0]}/devolucion",
+            json={"fecha_devolucion": today.isoformat()},
+        )
+        self.assertEqual(returned.json()["multa"], 20)
+        self.assertEqual(self.client.get("/reportes/resumen").json()["multas_totales"], 20)
 
     def test_24_casos_de_aceptacion_del_taller(self):
         """Comprueba reglas funcionales de catálogo, préstamos y reportes."""
@@ -242,13 +312,13 @@ class BibliotecaApiTests(unittest.TestCase):
             row for row in overdue_report if row["prestamo_id"] == overdue_loan["id"]
         )
         self.assertEqual(overdue_report_item["dias_retraso"], 13)
-        # 13. Returning late charges 0.50 for each late day.
+        # 13. Returning late charges 20 COP for each late day.
         returned = self.client.post(
             f"/prestamos/{overdue_loan['id']}/devolucion",
             json={"fecha_devolucion": date.today().isoformat()},
         )
         self.assertEqual(returned.status_code, 200)
-        self.assertEqual(returned.json()["multa"], 6.5)
+        self.assertEqual(returned.json()["multa"], 260)
         # 14. A returned loan cannot be returned again.
         self.assertEqual(
             self.client.post(
@@ -299,7 +369,7 @@ class BibliotecaApiTests(unittest.TestCase):
         fine_report = self.client.get("/reportes/socios-con-multas").json()
         self.assertEqual(len(fine_report), 1)
         self.assertEqual(fine_report[0]["nombre"], "Luis Pérez")
-        self.assertEqual(fine_report[0]["total_multas"], 6.5)
+        self.assertEqual(fine_report[0]["total_multas"], 260)
         # 23. Top borrowed books are ordered by loan count.
         top_books = self.client.get("/reportes/libros-mas-prestados?limit=3").json()
         self.assertLessEqual(len(top_books), 3)
@@ -605,9 +675,11 @@ class BibliotecaApiTests(unittest.TestCase):
         api_config = (app_module.FRONTEND_ROOT / "api-config.js").read_text(
             encoding="utf-8"
         )
-        self.assertIn('window.BIBLIOTECA_API_URL = "";', api_config)
+        self.assertIn(
+            'window.BIBLIOTECA_API_URL = "https://biblioteca-h6a3.onrender.com";',
+            api_config,
+        )
         self.assertIn("Render", api_config)
-        self.assertNotIn("onrender.com", api_config)
         catalog = self.client.get("/catalogo.json")
         self.assertEqual(catalog.status_code, 200)
         catalog_data = catalog.json()
