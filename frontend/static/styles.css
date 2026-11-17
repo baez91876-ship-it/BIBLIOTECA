@@ -121,6 +121,8 @@ th:last-child, td:last-child { width: 100px; text-align: right; }
 .status-pill.loaned { background: #f7eee8; color: #a56d4d; }
 .status-pill.loaned::before { background: #cb875c; }
 .row-actions { display: flex; justify-content: flex-end; gap: 5px; }
+.copies-form { display: flex; align-items: center; gap: 4px; }
+.copies-form input { width: 70px; min-height: 44px; padding: 6px; border: 1px solid #b9c3b9; border-radius: 6px; }
 .icon-button { display: grid; width: 44px; height: 44px; flex: 0 0 44px; place-items: center; border: 1px solid transparent; border-radius: 6px; background: transparent; color: var(--muted); font-size: 1.25rem; }
 .icon-button:hover { border-color: #eae9e3; background: #f8f8f5; color: var(--green); }
 .delete-button:hover { color: #b7554b; }

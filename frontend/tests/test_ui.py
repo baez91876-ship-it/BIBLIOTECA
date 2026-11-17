@@ -4,6 +4,7 @@ import socket
 import threading
 from collections.abc import Iterator
 from dataclasses import dataclass
+from datetime import date, timedelta
 from io import BytesIO
 from pathlib import Path
 from time import monotonic, sleep
@@ -20,7 +21,7 @@ from backend.app.core import covers
 from backend.app.core.database import Base, get_db
 from backend.app.core.exceptions import ServicioNoDisponible
 from backend.app.core.security import hash_password
-from backend.app.models import Autor, Categoria, Libro, Socio, Usuario
+from backend.app.models import Autor, Categoria, Libro, Prestamo, Socio, Usuario
 from backend.app.routes.auth import limiter
 
 TEST_EMAIL = "admin-ui@example.com"
@@ -257,6 +258,37 @@ def test_book_create_validation_edit_and_delete(ui: UI) -> None:
     expect(ui.page.locator("#book-list tr")).to_have_count(1)
 
 
+def test_edit_copies_independently(ui: UI) -> None:
+    seed_catalog(ui)
+    ui.page.goto(ui.url)
+    sign_in(ui)
+    input_field = ui.page.get_by_role("spinbutton", name="Ejemplares de Libro De Prueba")
+    input_field.fill("4")
+    ui.page.get_by_role("button", name="Guardar ejemplares de Libro De Prueba").click()
+    expect(ui.page.get_by_role("spinbutton", name="Ejemplares de Libro De Prueba")).to_have_value("4")
+    expect(ui.page.locator("#copy-count")).to_have_text("4")
+    with ui.sessions() as db:
+        assert db.scalars(select(Libro.ejemplares)).one() == 4
+        assert db.scalars(select(Libro.titulo)).one() == "Libro De Prueba"
+
+
+def test_edit_copies_shows_api_error(ui: UI) -> None:
+    seed_catalog(ui)
+    ui.page.goto(ui.url)
+    sign_in(ui)
+    ui.page.route(
+        "**/api/v1/libros/1",
+        lambda route: route.fulfill(
+            status=422, json={"detail": "Hay préstamos sin devolver"}
+        ),
+    )
+    ui.page.get_by_role("spinbutton", name="Ejemplares de Libro De Prueba").fill("1")
+    ui.page.get_by_role("button", name="Guardar ejemplares de Libro De Prueba").click()
+    expect(ui.page.locator("#notice")).to_contain_text("Hay préstamos sin devolver")
+    with ui.sessions() as db:
+        assert db.scalars(select(Libro.ejemplares)).one() == 2
+
+
 def cover_file():
     image = BytesIO()
     Image.new("RGB", (30, 40), "blue").save(image, format="PNG")
@@ -380,6 +412,33 @@ def test_loan_create_edit_return_and_protected_history(ui: UI) -> None:
     expect(ui.page.locator("#management-list button")).to_have_count(0)
 
 
+def test_overdue_loan_displays_fine_before_return(ui: UI) -> None:
+    seed_catalog(ui)
+    with ui.sessions() as db:
+        db.add(
+            Prestamo(
+                libro_id=db.scalars(select(Libro.id)).one(),
+                socio_id=db.scalars(select(Socio.id)).one(),
+                fecha_prestamo=date.today() - timedelta(days=10),
+                fecha_limite=date.today() - timedelta(days=2),
+                multa=0,
+            )
+        )
+        db.commit()
+    ui.page.goto(ui.url)
+    sign_in(ui)
+    ui.page.locator('[data-view="prestamos"]').click()
+    row = ui.page.locator("#management-list tr")
+    expect(row).to_contain_text("vencido")
+    expect(row).to_contain_text("COP")
+    expect(row).to_contain_text("40")
+    ui.page.once("dialog", lambda dialog: dialog.accept())
+    row.locator('[data-action="return"]').click()
+    expect(row).to_contain_text("devuelto")
+    expect(row).to_contain_text("COP")
+    expect(row).to_contain_text("40")
+
+
 def test_registration_login_permissions_and_logout(ui: UI) -> None:
     visit(ui)
     ui.page.locator("#login-button").click()
@@ -471,6 +530,11 @@ def test_api_failure_loads_static_readonly_catalog(ui: UI) -> None:
     expect(ui.page.locator("#notice")).to_contain_text("catálogo guardado")
     expect(ui.page.locator("#login-button")).not_to_be_visible()
     expect(ui.page.locator("#book-list button")).to_have_count(0)
+    ui.page.unroute("**/api/v1/**")
+    ui.page.locator("#refresh-books").click()
+    expect(ui.page.locator("#connection-label")).to_have_text("Biblioteca conectada")
+    expect(ui.page.locator("#login-button")).to_be_visible()
+    expect(ui.page.locator("#notice")).not_to_be_visible()
 
 
 @pytest.mark.parametrize("width", [320, 390, 768, 1024, 1440, 1920])

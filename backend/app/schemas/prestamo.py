@@ -49,7 +49,7 @@ class PrestamoRead(BaseModel):
     fecha_prestamo: date
     fecha_limite: date
     fecha_devolucion: date | None
-    multa: float
+    multa: float = Field(validation_alias="multa_actual")
     multa_pagada: bool
     estado: EstadoPrestamo
     libro: LibroRead

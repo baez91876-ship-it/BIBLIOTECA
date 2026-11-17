@@ -14,6 +14,14 @@ if TYPE_CHECKING:
     from .socio import Socio
 
 
+MULTA_DIARIA = Decimal("20")
+
+
+def calcular_multa(fecha_limite: date, fecha_efectiva: date) -> Decimal:
+    """Calcula la multa a partir del primer día posterior al vencimiento."""
+    return Decimal(max((fecha_efectiva - fecha_limite).days, 0)) * MULTA_DIARIA
+
+
 class Prestamo(Base):
     """Préstamo de un libro a un socio, con fechas e importe de multa."""
 
@@ -40,6 +48,13 @@ class Prestamo(Base):
 
     libro: Mapped["Libro"] = relationship(back_populates="prestamos")
     socio: Mapped["Socio"] = relationship(back_populates="prestamos")
+
+    @property
+    def multa_actual(self) -> Decimal:
+        """Calcula la multa provisional o conserva la multa final registrada."""
+        if self.fecha_devolucion is not None:
+            return self.multa
+        return calcular_multa(self.fecha_limite, date.today())
 
     @property
     def estado(self) -> str:

@@ -40,7 +40,7 @@ migration.on("exit", (code, signal) => {
   }
   const server = spawn(
     python,
-    ["-m", "uvicorn", "backend.app.main:app", "--reload"],
+    ["-m", "uvicorn", "backend.app.main:app", "--reload", "--reload-dir", path.join(projectRoot, "backend", "app")],
     { cwd: projectRoot, stdio: "inherit" }
   );
   server.on("error", (error) => exitWithError(error, "iniciar Uvicorn"));

@@ -7,3 +7,7 @@ libreria.db
 .coverage
 htmlcov/
 .vscode/
+node_modules/
+web/dist/
+out.log
+err.log
