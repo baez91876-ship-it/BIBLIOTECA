@@ -6,13 +6,30 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#f7f5f0">
   <title>Libreria | Gestión de libros</title>
-  <link rel="stylesheet" href="static/styles.css?v=covers-v6">
+  <link rel="stylesheet" href="static/styles.css?v=layout-v2">
   <script src="api-config.js?v=render-v1" defer></script>
-  <script src="static/app.js?v=cloudinary-v1" defer></script>
+  <script src="static/app.js?v=auth-gate-v1" defer></script>
 </head>
 <body>
+  <main id="login-view" class="login-view" aria-labelledby="login-title">
+    <form id="login-form" class="login-panel">
+      <p class="eyebrow">ACCESO SEGURO</p>
+      <h1 id="login-title">Iniciar sesión<span class="heading-period">.</span></h1>
+      <p class="subtitle">Accede a tu cuenta de la biblioteca.</p>
+      <label for="login-email">Correo electrónico</label>
+      <input id="login-email" name="username" type="email" required autocomplete="username" autofocus>
+      <label for="login-password">Contraseña</label>
+      <input id="login-password" name="password" type="password" required autocomplete="current-password">
+      <p class="form-error" id="login-error" role="alert" hidden></p>
+      <p class="auth-help" id="login-status" role="status" hidden></p>
+      <div class="dialog-actions">
+        <button class="button button-primary" id="submit-login" type="submit">Entrar</button>
+      </div>
+      <p class="auth-switch">¿Aún no tienes cuenta? <button class="text-button" id="open-register" type="button">Crear cuenta</button></p>
+    </form>
+  </main>
   <!-- Navegación lateral y contenido principal de la biblioteca. -->
-  <div class="app-shell">
+  <div class="app-shell" hidden>
     <aside class="sidebar">
       <a class="brand" href="./" aria-label="Inicio Libreria">
         <span class="brand-icon" aria-hidden="true">L</span>
@@ -34,6 +51,9 @@
       <button class="nav-link" type="button" data-view="prestamos">
         <span aria-hidden="true">↗</span> Préstamos
       </button>
+      <button class="nav-link" type="button" data-view="ejemplares">
+        <span aria-hidden="true">▥</span> Ejemplares
+      </button>
       <div class="sidebar-note">
         <span class="note-mark" aria-hidden="true">✳</span>
         <p>Un buen libro siempre merece otra vuelta.</p>
@@ -47,7 +67,6 @@
         <div class="topbar-actions">
           <span class="database-badge"><span class="status-dot"></span> <span id="database-label">PostgreSQL</span></span>
           <span id="signed-in-user" hidden></span>
-          <button class="button button-secondary" id="login-button" type="button">Iniciar sesión</button>
           <button class="button button-secondary" id="logout-button" type="button" hidden>Cerrar sesión</button>
         </div>
       </header>
@@ -104,7 +123,7 @@
           </label>
         </div>
         <div id="notice" class="notice" role="status" aria-live="polite" hidden></div>
-        <div class="table-wrap">
+        <div class="table-wrap" tabindex="0" role="region" aria-label="Tabla de libros; desplázate horizontalmente para ver todas las columnas">
           <table>
             <thead>
               <tr>
@@ -152,6 +171,43 @@
       </details>
       </div>
 
+      <section id="copies-view" hidden>
+        <div class="page-heading">
+          <div>
+            <p class="eyebrow">ADMINISTRACIÓN</p>
+            <h1>Ejemplares<span class="heading-period">.</span></h1>
+            <p class="subtitle">Consulta la disponibilidad y actualiza los ejemplares de cada libro.</p>
+          </div>
+        </div>
+        <section class="collection-panel">
+          <div class="collection-header">
+            <div>
+              <h2>Inventario de libros</h2>
+              <p>Los ejemplares no pueden ser menores que los préstamos activos.</p>
+            </div>
+            <label class="search-box">
+              <span aria-hidden="true">⌕</span>
+              <input id="copies-search" type="search" aria-label="Buscar ejemplares" placeholder="Buscar título o autor..." autocomplete="off">
+            </label>
+          </div>
+          <div id="copies-notice" class="notice" role="status" aria-live="polite" hidden></div>
+          <div class="table-wrap" tabindex="0" role="region" aria-label="Tabla de ejemplares; desplázate horizontalmente para ver todas las columnas">
+            <table>
+              <thead><tr><th scope="col">LIBRO</th><th scope="col">AUTOR</th><th scope="col">DISPONIBLES</th><th scope="col">EJEMPLARES</th></tr></thead>
+              <tbody id="copies-list"></tbody>
+            </table>
+            <div class="empty-state" id="copies-empty" hidden>
+              <h3>No hay libros que coincidan</h3>
+              <p>Prueba con otro término de búsqueda o añade un libro.</p>
+            </div>
+          </div>
+          <footer class="table-footer">
+            <span id="copies-count">0 libros</span>
+            <button class="text-button" id="refresh-copies" type="button">↻ Actualizar lista</button>
+          </footer>
+        </section>
+      </section>
+
       <!-- Tablas y formularios dinámicos de autores, categorías, socios y préstamos. -->
       <section id="management-view" hidden>
         <div class="page-heading">
@@ -176,7 +232,7 @@
             </label>
           </div>
           <div id="management-notice" class="notice" role="status" aria-live="polite" hidden></div>
-          <div class="table-wrap">
+          <div class="table-wrap" tabindex="0" role="region" aria-label="Tabla de registros; desplázate horizontalmente para ver todas las columnas">
             <table>
               <thead><tr id="management-head"></tr></thead>
               <tbody id="management-list"></tbody>
@@ -246,27 +302,6 @@
         <button class="button button-secondary" id="cancel-record-dialog" type="button">Cancelar</button>
         <button class="button button-primary" id="save-record" type="submit">Guardar</button>
       </div>
-    </form>
-  </dialog>
-  <dialog class="book-dialog" id="login-dialog" aria-labelledby="login-title">
-    <form id="login-form">
-      <div class="dialog-heading">
-        <div>
-          <p class="eyebrow">ACCESO SEGURO</p>
-          <h2 id="login-title">Iniciar sesión</h2>
-        </div>
-        <button class="icon-button" id="close-login-dialog" type="button" aria-label="Cerrar">×</button>
-      </div>
-      <label for="login-email">Correo electrónico</label>
-      <input id="login-email" name="username" type="email" required autocomplete="username">
-      <label for="login-password">Contraseña</label>
-      <input id="login-password" name="password" type="password" required autocomplete="current-password">
-      <p class="form-error" id="login-error" role="alert" hidden></p>
-      <div class="dialog-actions">
-        <button class="button button-secondary" id="cancel-login" type="button">Cancelar</button>
-        <button class="button button-primary" id="submit-login" type="submit">Entrar</button>
-      </div>
-      <p class="auth-switch">¿Aún no tienes cuenta? <button class="text-button" id="open-register" type="button">Crear cuenta</button></p>
     </form>
   </dialog>
   <dialog class="book-dialog" id="register-dialog" aria-labelledby="register-title">

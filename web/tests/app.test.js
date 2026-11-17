@@ -24,6 +24,7 @@ afterEach(() => { clearSession(); vi.restoreAllMocks(); });
 describe("catálogo de libros", () => {
   it("lista y filtra libros", async () => {
     mockApi();
+    session.user = { rol: "socio" };
     const wrapper = mount(App);
     await flushPromises();
     expect(wrapper.text()).toContain("Rayuela");
@@ -39,17 +40,22 @@ describe("catálogo de libros", () => {
     });
     const wrapper = mount(App);
     await flushPromises();
-    await wrapper.find("#login-button").trigger("click");
+    expect(wrapper.find(".login-view").exists()).toBe(true);
+    expect(wrapper.find("#search").exists()).toBe(false);
+    expect(wrapper.find(".tabs").exists()).toBe(false);
+    expect(globalThis.fetch).not.toHaveBeenCalled();
     await wrapper.find("#login-email").setValue("a@b.co");
     await wrapper.find("#login-password").setValue("secreto12345");
     await wrapper.find("form").trigger("submit");
     await flushPromises();
     expect(session.user.rol).toBe("bibliotecario");
     expect(wrapper.find("#add-book").exists()).toBe(true);
+    expect(wrapper.find(".login-view").exists()).toBe(false);
   });
 
   it("lista categorías en su sección", async () => {
     mockApi();
+    session.user = { rol: "socio" };
     const wrapper = mount(App);
     await flushPromises();
     await wrapper.find("#tab-categorias").trigger("click");
@@ -68,10 +74,45 @@ describe("catálogo de libros", () => {
     session.user = { rol: "administrador" };
     const wrapper = mount(App);
     await flushPromises();
+    expect(wrapper.find(".copies-form").exists()).toBe(false);
+    await wrapper.find("#tab-ejemplares").trigger("click");
+    await wrapper.find('input[aria-label="Buscar ejemplares"]').setValue("no existe");
+    expect(wrapper.find(".copies-form").exists()).toBe(false);
+    await wrapper.find('input[aria-label="Buscar ejemplares"]').setValue("cortázar");
     await wrapper.find('input[aria-label="Ejemplares de Rayuela"]').setValue(5);
     await wrapper.find(".copies-form").trigger("submit");
     await flushPromises();
     expect(payload).toEqual({ ejemplares: 5 });
+  });
+
+  it("muestra errores al editar ejemplares", async () => {
+    mockApi({
+      "/api/v1/libros/1": () => new Response(JSON.stringify({ detail: "Hay préstamos sin devolver" }), { status: 422 }),
+    });
+    session.user = { rol: "bibliotecario" };
+    const wrapper = mount(App);
+    await flushPromises();
+    await wrapper.find("#tab-ejemplares").trigger("click");
+    await wrapper.find(".copies-form").trigger("submit");
+    await flushPromises();
+    expect(wrapper.find('[role="alert"]').text()).toContain("Hay préstamos sin devolver");
+  });
+
+  it("oculta la aplicación al cerrar sesión y descarta los formularios abiertos", async () => {
+    mockApi();
+    session.user = { rol: "administrador" };
+    const wrapper = mount(App);
+    await flushPromises();
+    await wrapper.find("#add-book").trigger("click");
+    expect(wrapper.find(".overlay").exists()).toBe(true);
+    await wrapper.find("#logout-button").trigger("click");
+    await flushPromises();
+    expect(wrapper.find(".login-view").exists()).toBe(true);
+    expect(wrapper.find(".tabs").exists()).toBe(false);
+    expect(wrapper.find(".overlay").exists()).toBe(false);
+    session.user = { rol: "socio" };
+    await flushPromises();
+    expect(wrapper.find(".overlay").exists()).toBe(false);
   });
 
   it("muestra el error de la API al fallar el login", async () => {
@@ -80,7 +121,6 @@ describe("catálogo de libros", () => {
     });
     const wrapper = mount(App);
     await flushPromises();
-    await wrapper.find("#login-button").trigger("click");
     await wrapper.find("#login-email").setValue("a@b.co");
     await wrapper.find("#login-password").setValue("x");
     await wrapper.find("form").trigger("submit");

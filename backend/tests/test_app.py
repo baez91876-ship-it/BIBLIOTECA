@@ -2,6 +2,7 @@
 
 import asyncio
 import importlib
+from pathlib import Path
 
 import pytest
 from fastapi import Request, Response
@@ -138,6 +139,25 @@ def test_unhandled_error_uses_fallback_request_id_when_missing():
     )
 
     assert response.headers["x-request-id"] == "unknown"
+
+
+def test_application_starts_without_a_vue_build(monkeypatch):
+    vue_dist = main.PROJECT_ROOT / "web" / "dist"
+    original_is_dir = Path.is_dir
+
+    def is_dir(path):
+        return False if path == vue_dist else original_is_dir(path)
+
+    try:
+        with monkeypatch.context() as patch:
+            patch.setattr(Path, "is_dir", is_dir)
+            importlib.reload(main)
+            with TestClient(main.app) as client:
+                assert client.get("/app/").status_code == 404
+                assert client.get("/").status_code == 200
+                assert client.get("/static/app.js").status_code == 200
+    finally:
+        importlib.reload(main)
 
 
 def test_production_configuration_enables_cors_and_omits_legacy_routes(monkeypatch):

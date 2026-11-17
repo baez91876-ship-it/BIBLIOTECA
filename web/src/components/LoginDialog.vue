@@ -2,7 +2,8 @@
 import { ref } from "vue";
 import { login } from "../api.js";
 
-const emit = defineEmits(["close", "done"]);
+defineProps({ notice: { type: String, default: "" } });
+const emit = defineEmits(["done"]);
 const email = ref("");
 const password = ref("");
 const error = ref("");
@@ -23,20 +24,20 @@ async function submit() {
 </script>
 
 <template>
-  <div class="overlay" @click.self="emit('close')">
-    <form class="dialog" aria-label="Iniciar sesión" @submit.prevent="submit">
-      <h2>Iniciar sesión</h2>
+  <main class="login-view">
+    <form class="dialog login-panel" aria-label="Iniciar sesión" @submit.prevent="submit">
+      <h1>Iniciar sesión</h1>
       <label>Correo electrónico
-        <input v-model="email" type="email" required autocomplete="username" id="login-email">
+        <input v-model="email" type="email" required autocomplete="username" id="login-email" autofocus>
       </label>
       <label>Contraseña
         <input v-model="password" type="password" required autocomplete="current-password" id="login-password">
       </label>
       <p v-if="error" class="error" role="alert">{{ error }}</p>
+      <p v-if="notice" role="status">{{ notice }}</p>
       <div class="actions">
-        <button type="button" class="secondary" @click="emit('close')">Cancelar</button>
         <button type="submit" :disabled="busy">Entrar</button>
       </div>
     </form>
-  </div>
+  </main>
 </template>
