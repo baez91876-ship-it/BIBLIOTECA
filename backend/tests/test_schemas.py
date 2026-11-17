@@ -56,6 +56,42 @@ def test_book_category_bounds_and_optional_patch_values():
         )
 
 
+@pytest.mark.parametrize(
+    ("title", "expected"),
+    [
+        ("  Clean Code - Refactoring  ", "Clean Code Refactoring"),
+        ("Pre-historia -- ilustrada", "Pre Historia Ilustrada"),
+        ("El libro: una historia", "El Libro: Una Historia"),
+    ],
+)
+def test_book_titles_remove_hyphens_without_losing_text(title, expected):
+    book = LibroCreate(
+        titulo=title,
+        isbn="9780000000001",
+        anio_publicacion=2020,
+        ejemplares=1,
+        autor_id=1,
+        categoria_ids=[1],
+    )
+    assert book.titulo == expected
+    assert LibroPatch(titulo=title).titulo == expected
+
+
+@pytest.mark.parametrize("title", ["-", " - -- "])
+def test_book_titles_cannot_be_only_hyphens(title):
+    with pytest.raises(ValidationError, match="debe contener texto"):
+        LibroCreate(
+            titulo=title,
+            isbn="9780000000001",
+            anio_publicacion=2020,
+            ejemplares=1,
+            autor_id=1,
+            categoria_ids=[1],
+        )
+    with pytest.raises(ValidationError, match="debe contener texto"):
+        LibroPatch(titulo=title)
+
+
 def test_member_optional_fields_and_telephone_validation():
     assert (
         SocioCreate(

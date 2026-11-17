@@ -51,6 +51,8 @@ describe("catálogo de libros", () => {
     expect(session.user.rol).toBe("bibliotecario");
     expect(wrapper.find("#add-book").exists()).toBe(true);
     expect(wrapper.find(".login-view").exists()).toBe(false);
+    expect(wrapper.findAll(".book-card")).toHaveLength(1);
+    expect(wrapper.find(".book-card").text()).toContain("Rayuela");
   });
 
   it("lista categorías en su sección", async () => {

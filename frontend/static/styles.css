@@ -38,7 +38,7 @@ button:disabled { cursor: not-allowed; opacity: .6; }
 .sidebar > * { flex-shrink: 0; }
 .brand {
   display: flex; align-items: center; gap: 10px; margin: 0 0 54px 5px;
-  color: var(--ink); font-family: "Playfair Display", serif; font-size: 28px;
+  color: var(--ink); font-family: "Playfair Display", serif; font-size: 1.375rem;
   font-weight: 700; letter-spacing: -.9px; text-decoration: none;
 }
 .brand-icon {
@@ -73,7 +73,7 @@ button:disabled { cursor: not-allowed; opacity: .6; }
 }
 .topbar-actions { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
 #signed-in-user { color: #657366; font-size: .875rem; overflow-wrap: anywhere; }
-.breadcrumb span { margin: 0 8px; color: #c6c7c0; }
+.breadcrumb > span[aria-hidden] { margin: 0 8px; color: #c6c7c0; }
 .database-badge { display: flex; align-items: center; gap: 8px; padding: 7px 11px; border: 1px solid #e8e9e2; border-radius: 20px; background: #fff; color: #657366; font-size: .875rem; }
 
 /* Encabezados, estadísticas y paneles de catálogo. */
@@ -126,7 +126,7 @@ th:last-child, td:last-child { width: 100px; text-align: right; }
 .book-cover { display: grid; width: 48px; height: 64px; flex: 0 0 48px; object-fit: cover; place-items: center; border-radius: 3px 6px 6px 3px; background: #e9eee8; color: #69816c; font-family: "Playfair Display", serif; font-size: 20px; }
 .cover-preview { display: block; width: 120px; height: 160px; object-fit: contain; margin-top: 12px; border-radius: 6px; }
 .book-dialog input[type="file"] { overflow: hidden; }
-.book-title span:last-child { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.book-title span:last-child { min-width: 0; white-space: normal; overflow-wrap: anywhere; }
 .status-pill { display: inline-flex; align-items: center; gap: 6px; padding: 5px 9px; border-radius: 20px; background: #edf4ed; color: #547b59; font-size: 10px; white-space: nowrap; }
 .status-pill::before { width: 5px; height: 5px; border-radius: 50%; background: #69a273; content: ""; }
 .status-pill.loaned { background: #f7eee8; color: #a56d4d; }

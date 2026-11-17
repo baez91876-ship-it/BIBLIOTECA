@@ -236,7 +236,7 @@ def test_book_create_validation_edit_and_delete(ui: UI) -> None:
     ui.page.goto(ui.url)
     sign_in(ui)
     ui.page.locator("#add-book").click()
-    ui.page.locator("#title").fill("Segundo Libro")
+    ui.page.locator("#title").fill("Segundo - Libro")
     ui.page.locator("#isbn").fill("9780000000002")
     ui.page.locator("#author").select_option(label="Ana Escritora")
     ui.page.locator("#year").fill("2020")
@@ -250,7 +250,7 @@ def test_book_create_validation_edit_and_delete(ui: UI) -> None:
     expect(ui.page.locator("#book-list tr")).to_have_count(2)
     row = ui.page.locator("#book-list tr").filter(has_text="Segundo Libro")
     row.locator('[data-action="edit"]').click()
-    ui.page.locator("#title").fill("Libro Modificado")
+    ui.page.locator("#title").fill("Libro - Modificado")
     ui.page.locator("#save-book").click()
     row = ui.page.locator("#book-list tr").filter(has_text="Libro Modificado")
     expect(row).to_have_count(1)
@@ -265,6 +265,7 @@ def test_edit_copies_independently(ui: UI) -> None:
     sign_in(ui)
     expect(ui.page.locator(".copies-form")).to_have_count(0)
     ui.page.locator('[data-view="ejemplares"]').click()
+    expect(ui.page.locator("#breadcrumb-current")).to_have_text("Ejemplares")
     expect(ui.page.locator("#copies-list tr")).to_have_count(1)
     ui.page.locator("#copies-search").fill("inexistente")
     expect(ui.page.locator("#copies-empty")).to_be_visible()
@@ -503,6 +504,133 @@ def test_registration_login_permissions_and_logout(ui: UI) -> None:
     expect(ui.page.locator("#signed-in-user")).not_to_be_visible()
 
 
+@pytest.fixture
+def reader(ui: UI) -> UI:
+    seed_catalog(ui)
+    visit(ui)
+    ui.page.locator("#open-register").click()
+    ui.page.locator("#register-name").fill("Lector Normal")
+    ui.page.locator("#register-email").fill("normal-ui@example.com")
+    ui.page.locator("#register-password").fill(TEST_PASSWORD)
+    ui.page.locator("#submit-register").click()
+    expect(ui.page.locator("#register-dialog")).not_to_be_visible()
+    expect(ui.page.locator("#login-status")).to_contain_text("Cuenta creada")
+    return ui
+
+
+@pytest.mark.parametrize("path", ["/", "/app/"])
+@pytest.mark.parametrize("width", [320, 768, 1440])
+def test_normal_user_full_journey(reader: UI, path: str, width: int) -> None:
+    if path == "/app/" and not main.VUE_DIST.is_dir():
+        pytest.skip("Compila Vue con npm run web:build para probar /app/")
+    ui = reader
+    ui.page.set_viewport_size({"width": width, "height": 900})
+    ui.page.goto(f"{ui.url}{path}")
+    expect(ui.page.locator(".login-view")).to_be_visible()
+    expect(ui.page.locator("#search")).not_to_be_visible()
+    ui.page.locator("#login-email").fill("normal-ui@example.com")
+    ui.page.locator("#login-password").fill("incorrecta")
+    ui.page.get_by_role("button", name="Entrar").click()
+    expect(ui.page.get_by_role("alert")).to_be_visible()
+    expect(ui.page.locator("#search")).not_to_be_visible()
+    ui.page.locator("#login-password").fill(TEST_PASSWORD)
+    ui.page.get_by_role("button", name="Entrar").click()
+    expect(ui.page.locator("#signed-in-user")).to_contain_text("socio")
+    expect(ui.page.locator("#add-book")).not_to_be_visible()
+    expect(ui.page.locator(".copies-form")).to_have_count(0)
+    assert ui.page.evaluate("() => document.documentElement.scrollWidth <= innerWidth")
+
+    if path == "/":
+        rows = ui.page.locator("#book-list tr")
+        for view in ("autores", "categorias", "socios", "prestamos", "ejemplares"):
+            expect(ui.page.locator(f'[data-view="{view}"]')).not_to_be_visible()
+        expect(rows.locator("button")).to_have_count(0)
+    else:
+        rows = ui.page.locator(".book-card")
+        expect(ui.page.locator("#tab-ejemplares")).to_have_count(0)
+        expect(rows.locator("button")).to_have_count(0)
+        ui.page.locator("#tab-categorias").click()
+        expect(ui.page.locator(".category-card")).to_contain_text("novela")
+        expect(ui.page.locator(".inline-form")).to_have_count(0)
+        expect(ui.page.locator(".category-card button")).to_have_count(0)
+        ui.page.locator("#tab-libros").click()
+
+    expect(rows).to_have_count(1)
+    expect(rows).to_contain_text("Libro De Prueba")
+    expect(rows).to_contain_text("Ana Escritora")
+    expect(rows).to_contain_text("novela")
+    for query in ("LIBRO", "ana"):
+        ui.page.locator("#search").fill(query)
+        expect(rows).to_have_count(1)
+    ui.page.locator("#search").fill("sin coincidencias")
+    expect(rows).to_have_count(0)
+    expect(ui.page.locator("#empty-state")).to_be_visible()
+    expect(ui.page.locator("#empty-add-book")).not_to_be_visible()
+    ui.page.locator("#search").fill("")
+    expect(rows).to_have_count(1)
+
+    ui.page.locator("#logout-button").click()
+    expect(ui.page.locator(".login-view")).to_be_visible()
+    expect(ui.page.locator("#search")).not_to_be_visible()
+    ui.page.reload()
+    expect(ui.page.locator(".login-view")).to_be_visible()
+    expect(ui.page.locator("#search")).not_to_be_visible()
+    with ui.sessions() as db:
+        user = db.scalars(select(Usuario).where(Usuario.email == "normal-ui@example.com")).one()
+        assert user.rol == "socio"
+        assert user.socio_id is not None
+        assert db.scalars(select(Libro.ejemplares)).one() == 2
+        assert db.scalars(select(Prestamo)).first() is None
+
+
+def test_normal_user_registration_errors(reader: UI) -> None:
+    ui = reader
+    ui.page.locator("#open-register").click()
+    ui.page.locator("#register-name").fill("Otro Lector")
+    ui.page.locator("#register-email").fill("otro-ui@example.com")
+    ui.page.locator("#register-password").fill("SoloLetrasSinNumeros")
+    ui.page.locator("#submit-register").click()
+    expect(ui.page.locator("#register-error")).to_contain_text("letras y números")
+    expect(ui.page.locator("#register-dialog")).to_be_visible()
+    ui.page.locator("#register-email").fill("normal-ui@example.com")
+    ui.page.locator("#register-password").fill(TEST_PASSWORD)
+    ui.page.locator("#submit-register").click()
+    expect(ui.page.locator("#register-error")).to_contain_text("registrado")
+    expect(ui.page.locator("#submit-register")).to_be_enabled()
+    ui.page.locator("#cancel-register").click()
+    expect(ui.page.locator(".app-shell")).not_to_be_visible()
+    with ui.sessions() as db:
+        assert len(db.scalars(select(Usuario).where(Usuario.rol == "socio")).all()) == 1
+
+
+@pytest.mark.parametrize("path", ["/", "/app/"])
+def test_normal_user_session_expiry(reader: UI, path: str) -> None:
+    if path == "/app/" and not main.VUE_DIST.is_dir():
+        pytest.skip("Compila Vue con npm run web:build para probar /app/")
+    ui = reader
+    ui.page.goto(f"{ui.url}{path}")
+    ui.page.locator("#login-email").fill("normal-ui@example.com")
+    ui.page.locator("#login-password").fill(TEST_PASSWORD)
+    ui.page.get_by_role("button", name="Entrar").click()
+    expect(ui.page.locator("#signed-in-user")).to_contain_text("socio")
+    expect(ui.page.locator("#search")).to_be_visible()
+    ui.page.route(
+        "**/api/v1/categorias?**",
+        lambda route: route.fulfill(status=401, json={"detail": "Sesion expirada"}),
+    )
+    ui.page.route(
+        "**/api/v1/auth/refresh",
+        lambda route: route.fulfill(status=401, json={"detail": "Refresh expirado"}),
+    )
+    if path == "/":
+        ui.page.locator("#refresh-books").click()
+    else:
+        ui.page.locator("#tab-categorias").click()
+    expect(ui.page.locator(".login-view")).to_be_visible()
+    expect(ui.page.locator("#search")).not_to_be_visible()
+    expect(ui.page.locator(".login-view [role=status]")).to_be_visible()
+
+
 @pytest.mark.parametrize("failure", ["http", "network"])
 def test_logout_failure_is_visible_after_local_logout(ui: UI, failure: str) -> None:
     visit(ui)
@@ -694,6 +822,39 @@ def test_catalog_actions_fit_desktop_table(ui: UI) -> None:
     table = ui.page.locator("#books-view .table-wrap")
     assert table.evaluate("(element) => element.scrollWidth <= element.clientWidth")
     expect(ui.page.locator('#book-list [data-action="edit"]')).to_be_visible()
+
+
+@pytest.mark.parametrize("path", ["/", "/app/"])
+@pytest.mark.parametrize("width", [320, 768, 1366])
+def test_long_book_titles_are_fully_visible(ui: UI, path: str, width: int) -> None:
+    if path == "/app/" and not main.VUE_DIST.is_dir():
+        pytest.skip("Compila Vue con npm run web:build para probar /app/")
+    seed_catalog(ui)
+    title = "Una biblioteca de historias extraordinarias para todos los lectores " + "Lectura" * 10
+    with ui.sessions() as db:
+        db.scalars(select(Libro)).one().titulo = title
+        db.commit()
+    ui.page.set_viewport_size({"width": width, "height": 900})
+    ui.page.goto(f"{ui.url}{path}")
+    ui.page.locator("#login-email").fill(TEST_EMAIL)
+    ui.page.locator("#login-password").fill(TEST_PASSWORD)
+    ui.page.get_by_role("button", name="Entrar").click()
+    heading = ui.page.locator(
+        ".book-title span:last-child" if path == "/" else ".book-card h3"
+    )
+    expect(heading).to_have_text(title)
+    assert heading.evaluate("""element => {
+        const range = document.createRange();
+        range.selectNodeContents(element);
+        const text = range.getBoundingClientRect();
+        const box = element.getBoundingClientRect();
+        return range.getClientRects().length > 1 &&
+            text.width <= box.width + 1 &&
+            text.height <= box.height + 1 &&
+            element.scrollWidth <= element.clientWidth &&
+            element.scrollHeight <= element.clientHeight;
+    }"""), "El título debe ajustarse en varias líneas sin quedar recortado"
+    assert ui.page.evaluate("() => document.documentElement.scrollWidth <= innerWidth")
 
 
 @pytest.mark.parametrize("width", [320, 390, 768, 1440])

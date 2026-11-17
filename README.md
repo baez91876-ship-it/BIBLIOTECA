@@ -221,6 +221,9 @@ controles de al menos 44 × 44 px, foco de teclado visible y texto ampliable al
 200 %, sin desbordar la página; las tablas anchas se desplazan dentro de su panel.
 También verifica que vaciar campos opcionales al editar elimine sus valores. No requiere
 credenciales reales ni modifica los datos de PostgreSQL.
+Los recorridos de socio prueban el registro, errores de acceso, búsqueda,
+restricciones y cierre o caducidad de sesión en ambas interfaces, a 320, 768 y
+1440 píxeles. Compila Vue con `npm run web:build` para incluir sus recorridos.
 Las pruebas de portadas comprueban validación de imágenes, permisos, reemplazo,
 limpieza tras fallos y reintentos sin duplicados; no contactan Cloudinary.
 
@@ -332,5 +335,7 @@ menos préstamos sin devolver.
 - El inicio de sesión se abre en una vista independiente. El personal puede
   consultar y editar los ejemplares en la sección **Ejemplares**; no
   pueden reducirse por debajo de los préstamos sin devolver.
+- Al crear o editar libros se quita el signo `-` de los títulos y se normalizan
+  los espacios, conservando el resto del texto.
 - Los controladores lanzan excepciones propias; un manejador global devuelve
   errores de aplicación como `{ "detail": "mensaje" }`.

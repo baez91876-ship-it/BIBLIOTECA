@@ -18,6 +18,7 @@ const copies = reactive({});
 const savingCopies = ref(null);
 const sessionNotice = ref("");
 watch(() => session.user, (user, previous) => {
+  if (user && !previous) onLogin();
   if (!user && previous) {
     sessionNotice.value = "Tu sesión terminó. Inicia sesión para continuar.";
     view.value = "libros";
@@ -114,10 +115,10 @@ onMounted(() => {
 </script>
 
 <template>
-  <LoginDialog v-if="!session.user" :notice="sessionNotice" @done="onLogin" />
+  <LoginDialog v-if="!session.user" :notice="sessionNotice" />
   <template v-else>
   <header class="topbar">
-    <a class="brand" href="./">Libreria<span>.</span></a>
+    <a class="brand" href="./" aria-label="Inicio BIBLIOTECA">BIBLIOTECA<span>.</span></a>
     <div class="user">
       <span v-if="session.user" id="signed-in-user">{{ session.user.nombre }} · {{ session.user.rol }}</span>
       <button class="secondary" id="logout-button" @click="signOut">Cerrar sesión</button>

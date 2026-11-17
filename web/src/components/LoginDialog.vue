@@ -3,7 +3,6 @@ import { ref } from "vue";
 import { login } from "../api.js";
 
 defineProps({ notice: { type: String, default: "" } });
-const emit = defineEmits(["done"]);
 const email = ref("");
 const password = ref("");
 const error = ref("");
@@ -14,7 +13,6 @@ async function submit() {
   error.value = "";
   try {
     await login(email.value, password.value);
-    emit("done");
   } catch (e) {
     error.value = e.message;
   } finally {

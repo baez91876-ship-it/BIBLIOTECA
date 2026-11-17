@@ -5,10 +5,10 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#f7f5f0">
-  <title>Libreria | Gestión de libros</title>
-  <link rel="stylesheet" href="static/styles.css?v=layout-v2">
+  <title>BIBLIOTECA | Gestión de libros</title>
+  <link rel="stylesheet" href="static/styles.css?v=biblioteca-v1">
   <script src="api-config.js?v=render-v1" defer></script>
-  <script src="static/app.js?v=auth-gate-v1" defer></script>
+  <script src="static/app.js?v=biblioteca-v1" defer></script>
 </head>
 <body>
   <main id="login-view" class="login-view" aria-labelledby="login-title">
@@ -31,9 +31,9 @@
   <!-- Navegación lateral y contenido principal de la biblioteca. -->
   <div class="app-shell" hidden>
     <aside class="sidebar">
-      <a class="brand" href="./" aria-label="Inicio Libreria">
-        <span class="brand-icon" aria-hidden="true">L</span>
-        <span>Libreria<span class="brand-period">.</span></span>
+      <a class="brand" href="./" aria-label="Inicio BIBLIOTECA">
+        <span class="brand-icon" aria-hidden="true">B</span>
+        <span>BIBLIOTECA<span class="brand-period">.</span></span>
       </a>
       <div class="sidebar-label">BIBLIOTECA</div>
       <button class="nav-link active" type="button" data-view="libros" aria-current="page">
@@ -63,7 +63,7 @@
 
     <main class="main-content">
       <header class="topbar">
-        <span class="breadcrumb">Biblioteca <span>/</span> Colección</span>
+        <span class="breadcrumb">Biblioteca <span aria-hidden="true">/</span> <span id="breadcrumb-current">Colección</span></span>
         <div class="topbar-actions">
           <span class="database-badge"><span class="status-dot"></span> <span id="database-label">PostgreSQL</span></span>
           <span id="signed-in-user" hidden></span>
@@ -115,7 +115,7 @@
         <div class="collection-header">
           <div>
             <h2>Todos los libros</h2>
-            <p>Explora y administra tu biblioteca personal.</p>
+            <p>Consulta los títulos disponibles y su información.</p>
           </div>
           <label class="search-box">
             <span aria-hidden="true">⌕</span>

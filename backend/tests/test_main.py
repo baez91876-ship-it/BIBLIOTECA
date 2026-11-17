@@ -607,10 +607,10 @@ class BibliotecaApiTests(unittest.TestCase):
         """Verifica la interfaz, Swagger y los recursos estáticos publicados."""
         response = self.client.get("/")
         self.assertEqual(response.status_code, 200)
-        self.assertIn("<title>Libreria | Gestión de libros</title>", response.text)
-        self.assertIn('aria-label="Inicio Libreria"', response.text)
+        self.assertIn("<title>BIBLIOTECA | Gestión de libros</title>", response.text)
+        self.assertIn('aria-label="Inicio BIBLIOTECA"', response.text)
         self.assertIn(
-            '<span>Libreria<span class="brand-period">.</span></span>',
+            '<span>BIBLIOTECA<span class="brand-period">.</span></span>',
             response.text,
         )
         self.assertIn('id="api-docs-status"', response.text)

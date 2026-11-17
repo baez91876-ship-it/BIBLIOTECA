@@ -14,6 +14,13 @@ from .autor import AutorRead
 from .categoria import CategoriaRead
 
 
+def _normalizar_titulo(value: str) -> str:
+    titulo = " ".join(value.replace("-", " ").split())
+    if not titulo:
+        raise ValueError("El título debe contener texto")
+    return titulo.title()
+
+
 def _validar_categoria_ids(value: list[int]) -> list[int]:
     """Limita la cantidad de categorías y rechaza identificadores duplicados."""
     if not 1 <= len(value) <= 5:
@@ -39,7 +46,7 @@ class LibroCreate(BaseModel):
     @classmethod
     def formatear_titulo(cls, value: str) -> str:
         """Normaliza espacios y capitalización del título."""
-        return " ".join(value.split()).title()
+        return _normalizar_titulo(value)
 
     @field_validator("categoria_ids")
     @classmethod
@@ -64,7 +71,7 @@ class LibroPatch(BaseModel):
     @classmethod
     def formatear_titulo(cls, value: str | None) -> str | None:
         """Normaliza el título solo cuando se proporciona."""
-        return " ".join(value.split()).title() if value else value
+        return _normalizar_titulo(value) if value else value
 
     @field_validator("categoria_ids")
     @classmethod
