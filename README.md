@@ -51,10 +51,12 @@ no borran ni recrean los datos de las tablas existentes.
 
 La interfaz está en <http://127.0.0.1:8000/>, Swagger en
 <http://127.0.0.1:8000/docs> y ReDoc en <http://127.0.0.1:8000/redoc>.
-La interfaz pública permite consultar el catálogo. Inicia sesión con un usuario
-bibliotecario o administrador para gestionar el catálogo y las operaciones
-internas. El acceso dura 15 minutos y la interfaz rota el refresh token; al
+La interfaz requiere iniciar sesión antes de mostrar el catálogo. Un usuario
+bibliotecario o administrador puede gestionar el catálogo y las operaciones
+internas. Las consultas de la API siguen siendo públicas. El acceso dura 15 minutos y la interfaz rota el refresh token; al
 cerrar sesión revoca ese token.
+Las vistas se adaptan a móviles y escritorio; las tablas anchas se pueden
+desplazar horizontalmente con el ratón, el tacto o las flechas del teclado.
 
 ## Interfaz Vue 3
 
@@ -117,9 +119,9 @@ La página publicada está en
 <https://baez91876-ship-it.github.io/BIBLIOTECA/>. El repositorio se llama
 `BIBLIOTECA`; la URL anterior con `BIBBLIOTECA` ya no es válida.
 
-Si la API no responde o todavía no se configura su URL, la interfaz muestra el
-catálogo guardado en modo de solo lectura. Si la URL está configurada, usa
-**Actualizar lista** para reintentar la conexión cuando el servicio vuelva.
+Se necesita una API configurada y disponible para iniciar sesión. Si la API deja
+de responder después del acceso, la interfaz muestra el catálogo guardado en
+modo de solo lectura; usa **Actualizar lista** para reintentar la conexión.
 
 La URL de la API para GitHub Pages se configura en
 [`frontend/api-config.js`](./frontend/api-config.js) y apunta a
@@ -327,7 +329,8 @@ menos préstamos sin devolver.
   libros con préstamos asociados.
 - Los préstamos abiertos permiten cambiar la fecha límite o eliminarlos. Los
   préstamos devueltos son inmutables para conservar el historial.
-- El personal puede editar los ejemplares desde la casilla de cada libro; no
+- El inicio de sesión se abre en una vista independiente. El personal puede
+  consultar y editar los ejemplares en la sección **Ejemplares**; no
   pueden reducirse por debajo de los préstamos sin devolver.
 - Los controladores lanzan excepciones propias; un manejador global devuelve
   errores de aplicación como `{ "detail": "mensaje" }`.

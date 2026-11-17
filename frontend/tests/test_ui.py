@@ -76,6 +76,7 @@ def ui(browser: Browser, tmp_path: Path) -> Iterator[UI]:
             log_level="warning",
             access_log=False,
             lifespan="off",
+            timeout_graceful_shutdown=2,
         )
     )
     thread = threading.Thread(target=server.run, kwargs={"sockets": [listener]})
@@ -105,16 +106,15 @@ def ui(browser: Browser, tmp_path: Path) -> Iterator[UI]:
 
 def visit(ui: UI) -> None:
     ui.page.goto(ui.url)
-    expect(ui.page.locator("#total-count")).to_have_text("0")
+    expect(ui.page.locator("#login-view")).to_be_visible()
 
 
 def sign_in(ui: UI) -> None:
-    ui.page.locator("#login-button").click()
     ui.page.locator("#login-email").fill(TEST_EMAIL)
     ui.page.locator("#login-password").fill(TEST_PASSWORD)
     ui.page.locator("#submit-login").click()
     expect(ui.page.locator("#signed-in-user")).to_contain_text("administrador")
-    expect(ui.page.locator("#login-dialog")).not_to_be_visible()
+    expect(ui.page.locator("#login-view")).not_to_be_visible()
 
 
 def seed_catalog(ui: UI) -> None:
@@ -143,14 +143,15 @@ def seed_catalog(ui: UI) -> None:
         db.commit()
 
 
-def test_public_catalog_search_and_empty_state(ui: UI) -> None:
+def test_catalog_search_and_empty_state(ui: UI) -> None:
     visit(ui)
+    sign_in(ui)
     expect(ui.page.locator("#empty-title")).to_have_text(
         "Tu próxima lectura empieza aquí"
     )
     ui.page.locator("#search").fill("inexistente")
     expect(ui.page.locator("#empty-title")).to_have_text("No encontramos ese libro")
-    expect(ui.page.locator("#add-book")).not_to_be_visible()
+    expect(ui.page.locator("#add-book")).to_be_visible()
     seed_catalog(ui)
     ui.page.locator("#search").fill("")
     ui.page.locator("#refresh-books").click()
@@ -262,10 +263,17 @@ def test_edit_copies_independently(ui: UI) -> None:
     seed_catalog(ui)
     ui.page.goto(ui.url)
     sign_in(ui)
+    expect(ui.page.locator(".copies-form")).to_have_count(0)
+    ui.page.locator('[data-view="ejemplares"]').click()
+    expect(ui.page.locator("#copies-list tr")).to_have_count(1)
+    ui.page.locator("#copies-search").fill("inexistente")
+    expect(ui.page.locator("#copies-empty")).to_be_visible()
+    ui.page.locator("#copies-search").fill("ANA")
     input_field = ui.page.get_by_role("spinbutton", name="Ejemplares de Libro De Prueba")
     input_field.fill("4")
     ui.page.get_by_role("button", name="Guardar ejemplares de Libro De Prueba").click()
     expect(ui.page.get_by_role("spinbutton", name="Ejemplares de Libro De Prueba")).to_have_value("4")
+    ui.page.locator('[data-view="libros"]').click()
     expect(ui.page.locator("#copy-count")).to_have_text("4")
     with ui.sessions() as db:
         assert db.scalars(select(Libro.ejemplares)).one() == 4
@@ -276,6 +284,7 @@ def test_edit_copies_shows_api_error(ui: UI) -> None:
     seed_catalog(ui)
     ui.page.goto(ui.url)
     sign_in(ui)
+    ui.page.locator('[data-view="ejemplares"]').click()
     ui.page.route(
         "**/api/v1/libros/1",
         lambda route: route.fulfill(
@@ -284,9 +293,42 @@ def test_edit_copies_shows_api_error(ui: UI) -> None:
     )
     ui.page.get_by_role("spinbutton", name="Ejemplares de Libro De Prueba").fill("1")
     ui.page.get_by_role("button", name="Guardar ejemplares de Libro De Prueba").click()
-    expect(ui.page.locator("#notice")).to_contain_text("Hay préstamos sin devolver")
+    expect(ui.page.locator("#copies-notice")).to_contain_text("Hay préstamos sin devolver")
     with ui.sessions() as db:
         assert db.scalars(select(Libro.ejemplares)).one() == 2
+
+
+def test_copies_load_failure_and_retry(ui: UI) -> None:
+    seed_catalog(ui)
+    ui.page.goto(ui.url)
+    sign_in(ui)
+    ui.page.route(
+        "**/api/v1/libros?**",
+        lambda route: route.fulfill(status=503, json={"detail": "Inventario no disponible"}),
+    )
+    ui.page.locator('[data-view="ejemplares"]').click()
+    expect(ui.page.locator("#copies-notice")).to_contain_text("Inventario no disponible")
+    ui.page.locator("#copies-search").fill("Libro")
+    expect(ui.page.locator("#copies-list tr")).to_have_count(0)
+    ui.page.unroute("**/api/v1/libros?**")
+    ui.page.locator("#refresh-copies").click()
+    expect(ui.page.locator("#copies-list tr")).to_have_count(1)
+    expect(ui.page.locator("#copies-notice")).not_to_be_visible()
+
+
+def test_login_is_required_before_loading_catalog(ui: UI) -> None:
+    requests = []
+    ui.page.on("request", lambda request: requests.append(request.url))
+    visit(ui)
+    expect(ui.page.locator(".app-shell")).not_to_be_visible()
+    ui.page.keyboard.press("Escape")
+    expect(ui.page.locator("#login-view")).to_be_visible()
+    assert not any("/api/v1/libros" in url for url in requests)
+    sign_in(ui)
+    expect(ui.page.locator("#books-view")).to_be_visible()
+    assert ui.page.locator(".nav-link[data-view]").evaluate_all(
+        "links => links.map(link => link.dataset.view)"
+    ) == ["libros", "autores", "categorias", "socios", "prestamos", "ejemplares"]
 
 
 def cover_file():
@@ -441,21 +483,23 @@ def test_overdue_loan_displays_fine_before_return(ui: UI) -> None:
 
 def test_registration_login_permissions_and_logout(ui: UI) -> None:
     visit(ui)
-    ui.page.locator("#login-button").click()
     ui.page.locator("#open-register").click()
     ui.page.locator("#register-name").fill("Lector Nuevo")
     ui.page.locator("#register-email").fill("registro-ui@example.com")
     ui.page.locator("#register-password").fill(TEST_PASSWORD)
     ui.page.locator("#submit-register").click()
-    expect(ui.page.locator("#login-dialog")).to_be_visible()
+    expect(ui.page.locator("#login-view")).to_be_visible()
+    expect(ui.page.locator("#login-status")).to_contain_text("Cuenta creada")
     expect(ui.page.locator("#login-email")).to_have_value("registro-ui@example.com")
     ui.page.locator("#login-password").fill(TEST_PASSWORD)
     ui.page.locator("#submit-login").click()
     expect(ui.page.locator("#signed-in-user")).to_contain_text("socio")
     expect(ui.page.locator("#add-book")).not_to_be_visible()
     expect(ui.page.locator('[data-view="socios"]')).not_to_be_visible()
+    expect(ui.page.locator('[data-view="ejemplares"]')).not_to_be_visible()
     ui.page.locator("#logout-button").click()
-    expect(ui.page.locator("#login-button")).to_be_visible()
+    expect(ui.page.locator("#login-view")).to_be_visible()
+    expect(ui.page.locator(".app-shell")).not_to_be_visible()
     expect(ui.page.locator("#signed-in-user")).not_to_be_visible()
 
 
@@ -472,8 +516,8 @@ def test_logout_failure_is_visible_after_local_logout(ui: UI, failure: str) -> N
 
     ui.page.route("**/api/v1/auth/logout", fail_logout)
     ui.page.locator("#logout-button").click()
-    expect(ui.page.locator("#login-button")).to_be_visible()
-    expect(ui.page.locator("#notice")).to_contain_text("no se pudo revocar el token")
+    expect(ui.page.locator("#login-view")).to_be_visible()
+    expect(ui.page.locator("#login-status")).to_contain_text("no se pudo revocar el token")
 
 
 def test_session_expiration_removes_stale_book_actions(ui: UI) -> None:
@@ -497,7 +541,13 @@ def test_session_expiration_removes_stale_book_actions(ui: UI) -> None:
     )
     ui.page.locator("#refresh-books").click()
     expect(ui.page.locator("#logout-button")).not_to_be_visible()
+    expect(ui.page.locator("#login-view")).to_be_visible()
+    expect(ui.page.locator("#login-status")).to_contain_text("caducado")
     expect(ui.page.locator("#book-list button")).to_have_count(0)
+    ui.page.unroute("**/api/v1/libros?**")
+    ui.page.unroute("**/api/v1/auth/refresh")
+    sign_in(ui)
+    expect(ui.page.locator('#book-list [data-action="edit"]')).to_have_count(1)
 
 
 def test_refresh_rotates_session_and_retries_request(ui: UI) -> None:
@@ -524,30 +574,30 @@ def test_refresh_rotates_session_and_retries_request(ui: UI) -> None:
 
 
 def test_api_failure_loads_static_readonly_catalog(ui: UI) -> None:
+    visit(ui)
+    sign_in(ui)
     ui.page.route("**/api/v1/**", lambda route: route.abort("failed"))
-    ui.page.goto(ui.url)
+    ui.page.locator("#refresh-books").click()
     expect(ui.page.locator("#connection-label")).to_have_text("Catálogo estático")
     expect(ui.page.locator("#notice")).to_contain_text("catálogo guardado")
-    expect(ui.page.locator("#login-button")).not_to_be_visible()
+    expect(ui.page.locator("#logout-button")).to_be_visible()
     expect(ui.page.locator("#book-list button")).to_have_count(0)
     ui.page.unroute("**/api/v1/**")
     ui.page.locator("#refresh-books").click()
     expect(ui.page.locator("#connection-label")).to_have_text("Biblioteca conectada")
-    expect(ui.page.locator("#login-button")).to_be_visible()
+    expect(ui.page.locator("#logout-button")).to_be_visible()
     expect(ui.page.locator("#notice")).not_to_be_visible()
 
 
 @pytest.mark.parametrize("width", [320, 390, 768, 1024, 1440, 1920])
-def test_responsive_layout_and_dialog(ui: UI, width: int) -> None:
+def test_responsive_layout_and_login_view(ui: UI, width: int) -> None:
     ui.page.set_viewport_size({"width": width, "height": 900})
     visit(ui)
     assert ui.page.evaluate("() => document.documentElement.scrollWidth <= innerWidth")
-    ui.page.locator("#login-button").click()
-    box = ui.page.locator("#login-dialog").bounding_box()
+    box = ui.page.locator(".login-panel").bounding_box()
     assert box is not None
     assert box["x"] >= 0 and box["x"] + box["width"] <= width
-    ui.page.locator("#cancel-login").click()
-    expect(ui.page.locator("#login-dialog")).not_to_be_visible()
+    expect(ui.page.locator(".app-shell")).not_to_be_visible()
 
 
 @pytest.mark.parametrize("width", [320, 390, 768, 1024, 1440, 1920])
@@ -556,10 +606,12 @@ def test_readable_text_and_touch_targets_in_all_views(ui: UI, width: int) -> Non
     seed_catalog(ui)
     ui.page.goto(ui.url)
     sign_in(ui)
-    for view in ("libros", "autores", "categorias", "socios", "prestamos"):
+    for view in ("libros", "ejemplares", "autores", "categorias", "socios", "prestamos"):
         ui.page.locator(f'[data-view="{view}"]').click()
         if view == "libros":
             expect(ui.page.locator("#book-list tr")).to_have_count(1)
+        elif view == "ejemplares":
+            expect(ui.page.locator("#copies-list tr")).to_have_count(1)
         else:
             expect(ui.page.locator("#add-record")).to_be_enabled()
         measurements = ui.page.evaluate("""() => {
@@ -586,6 +638,8 @@ def test_readable_text_and_touch_targets_in_all_views(ui: UI, width: int) -> Non
             item["height"] >= 44 and item["width"] >= 44
             for item in measurements["controls"]
         ), measurements
+        if view == "ejemplares":
+            continue
         ui.page.locator("#add-book" if view == "libros" else "#add-record").click()
         modal = ui.page.locator(
             "#book-dialog" if view == "libros" else "#record-dialog"
@@ -600,6 +654,79 @@ def test_readable_text_and_touch_targets_in_all_views(ui: UI, width: int) -> Non
         assert box is not None
         assert box["x"] >= 0 and box["x"] + box["width"] <= width
         ui.page.keyboard.press("Escape")
+
+
+def test_tables_are_keyboard_scrollable_on_small_screens(ui: UI) -> None:
+    ui.page.set_viewport_size({"width": 320, "height": 700})
+    seed_catalog(ui)
+    ui.page.goto(ui.url)
+    sign_in(ui)
+    table = ui.page.locator("#books-view .table-wrap")
+    expect(ui.page.locator("#book-list tr")).to_have_count(1)
+    assert table.evaluate("(element) => element.scrollWidth > element.clientWidth")
+    table.focus()
+    ui.page.keyboard.press("ArrowRight")
+    expect(table).to_be_focused()
+    ui.page.wait_for_function("(element) => element.scrollLeft > 0", arg=table.element_handle())
+
+
+def test_sidebar_scrolls_on_short_desktop(ui: UI) -> None:
+    ui.page.set_viewport_size({"width": 1024, "height": 480})
+    visit(ui)
+    sign_in(ui)
+    sidebar = ui.page.locator(".sidebar")
+    assert sidebar.evaluate("(element) => element.scrollHeight > element.clientHeight")
+    assert sidebar.locator(".nav-link").evaluate_all(
+        "links => links.every(link => link.getBoundingClientRect().height >= 44)"
+    )
+    ui.page.locator(".sidebar-footer").scroll_into_view_if_needed()
+    assert sidebar.evaluate("(element) => element.scrollTop > 0")
+    ui.page.locator('[data-view="ejemplares"]').click()
+    expect(ui.page.locator("#copies-view")).to_be_visible()
+
+
+def test_catalog_actions_fit_desktop_table(ui: UI) -> None:
+    ui.page.set_viewport_size({"width": 1366, "height": 900})
+    seed_catalog(ui)
+    ui.page.goto(ui.url)
+    sign_in(ui)
+    expect(ui.page.locator("#book-list tr")).to_have_count(1)
+    table = ui.page.locator("#books-view .table-wrap")
+    assert table.evaluate("(element) => element.scrollWidth <= element.clientWidth")
+    expect(ui.page.locator('#book-list [data-action="edit"]')).to_be_visible()
+
+
+@pytest.mark.parametrize("width", [320, 390, 768, 1440])
+def test_vue_views_fit_the_viewport(ui: UI, width: int) -> None:
+    if not main.VUE_DIST.is_dir():
+        pytest.skip("Compila Vue con npm run web:build para probar /app/")
+    ui.page.set_viewport_size({"width": width, "height": 700})
+    seed_catalog(ui)
+    ui.page.goto(f"{ui.url}/app/")
+    ui.page.locator("#login-email").fill(TEST_EMAIL)
+    ui.page.locator("#login-password").fill(TEST_PASSWORD)
+    ui.page.get_by_role("button", name="Entrar").click()
+    expect(ui.page.locator("#search")).to_be_visible()
+
+    def assert_layout() -> None:
+        assert ui.page.evaluate("() => document.documentElement.scrollWidth <= innerWidth")
+        controls = ui.page.locator("button:visible, input:not([type=checkbox]):visible, select:visible")
+        assert controls.evaluate_all(
+            "elements => elements.every(element => element.getBoundingClientRect().height >= 44)"
+        )
+
+    for tab in ("#tab-libros", "#tab-categorias", "#tab-ejemplares"):
+        ui.page.locator(tab).click()
+        assert_layout()
+
+    ui.page.locator("#tab-libros").click()
+    ui.page.locator("#add-book").click()
+    modal = ui.page.locator(".overlay .dialog")
+    expect(modal).to_be_visible()
+    box = modal.bounding_box()
+    assert box is not None
+    assert box["x"] >= 0 and box["x"] + box["width"] <= width
+    assert_layout()
 
 
 def test_text_can_scale_to_two_hundred_percent(ui: UI) -> None:
@@ -623,19 +750,18 @@ def test_text_can_scale_to_two_hundred_percent(ui: UI) -> None:
 
 def test_keyboard_focus_is_visible(ui: UI) -> None:
     visit(ui)
-    ui.page.locator("#login-button").focus()
-    assert ui.page.locator("#login-button").evaluate(
+    ui.page.locator("#submit-login").focus()
+    assert ui.page.locator("#submit-login").evaluate(
         """element => getComputedStyle(element).outlineStyle !== 'none' &&
             parseFloat(getComputedStyle(element).outlineWidth) >= 2"""
     )
-    ui.page.keyboard.press("Enter")
-    expect(ui.page.locator("#login-dialog")).to_be_visible()
     ui.page.keyboard.press("Escape")
-    expect(ui.page.locator("#login-dialog")).not_to_be_visible()
+    expect(ui.page.locator("#login-view")).to_be_visible()
 
 
 def test_swagger_panel_and_openapi(ui: UI) -> None:
     visit(ui)
+    sign_in(ui)
     ui.page.locator("#api-docs summary").click()
     expect(ui.page.locator("#api-docs-frame")).to_have_attribute("src", "/docs")
     response = ui.page.request.get(f"{ui.url}/openapi.json")
@@ -662,6 +788,7 @@ def test_catalog_loads_more_than_one_api_page(ui: UI) -> None:
         )
         db.commit()
     ui.page.goto(ui.url)
+    sign_in(ui)
     expect(ui.page.locator("#result-count")).to_have_text("101 libros")
     expect(ui.page.locator("#book-list tr")).to_have_count(101)
     ui.page.locator("#search").fill("Libro 100")
@@ -670,7 +797,6 @@ def test_catalog_loads_more_than_one_api_page(ui: UI) -> None:
 
 def test_invalid_login_displays_error_and_allows_retry(ui: UI) -> None:
     visit(ui)
-    ui.page.locator("#login-button").click()
     ui.page.locator("#login-email").fill(TEST_EMAIL)
     ui.page.locator("#login-password").fill("incorrecta")
     ui.page.locator("#submit-login").click()

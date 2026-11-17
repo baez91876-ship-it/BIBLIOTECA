@@ -618,7 +618,7 @@ class BibliotecaApiTests(unittest.TestCase):
         page = PageStructureParser()
         page.feed(response.text)
         self.assertEqual(
-            page.views, {"libros", "autores", "categorias", "socios", "prestamos"}
+            page.views, {"libros", "ejemplares", "autores", "categorias", "socios", "prestamos"}
         )
         self.assertEqual(
             page.assets,
@@ -648,7 +648,8 @@ class BibliotecaApiTests(unittest.TestCase):
                 "management-view",
                 "book-dialog",
                 "record-dialog",
-                "login-dialog",
+                "login-view",
+                "copies-view",
                 "register-dialog",
                 "register-form",
                 "book-list",

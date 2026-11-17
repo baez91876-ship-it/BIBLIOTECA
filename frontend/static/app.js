@@ -11,6 +11,12 @@ let coverObjectUrl = null;
 const notice = document.querySelector("#notice");
 const searchInput = document.querySelector("#search");
 const booksView = document.querySelector("#books-view");
+const copiesView = document.querySelector("#copies-view");
+const copiesList = document.querySelector("#copies-list");
+const copiesSearch = document.querySelector("#copies-search");
+const copiesNotice = document.querySelector("#copies-notice");
+const loginView = document.querySelector("#login-view");
+const appShell = document.querySelector(".app-shell");
 const managementView = document.querySelector("#management-view");
 const managementList = document.querySelector("#management-list");
 const managementSearch = document.querySelector("#management-search");
@@ -28,7 +34,9 @@ let categories = [];
 let members = [];
 let loans = [];
 let editingBookId = null;
-let activeView = "libros";
+let activeView = "login";
+let copiesLoaded = false;
+let copiesRequest = 0;
 let activeRecordId = null;
 let accessToken = null;
 let refreshToken = null;
@@ -194,10 +202,8 @@ function isStaff() {
 }
 
 function updateAuthentication() {
-  const loginButton = document.querySelector("#login-button");
   const logoutButton = document.querySelector("#logout-button");
   const userLabel = document.querySelector("#signed-in-user");
-  loginButton.hidden = readOnlyCatalog || Boolean(currentUser);
   logoutButton.hidden = !currentUser;
   userLabel.hidden = !currentUser;
   userLabel.textContent = currentUser
@@ -208,7 +214,7 @@ function updateAuthentication() {
   for (const link of document.querySelectorAll(".nav-link[data-view]:not([data-view='libros'])")) {
     link.hidden = !isStaff() || readOnlyCatalog;
   }
-  if (!isStaff() && activeView !== "libros") setView("libros");
+  if (!isStaff() && !["libros", "login"].includes(activeView)) setView("libros");
 }
 
 async function renewSession() {
@@ -237,6 +243,10 @@ function clearSession() {
   accessToken = null;
   refreshToken = null;
   currentUser = null;
+  for (const modal of [dialog, recordDialog]) {
+    if (modal.open) modal.close();
+  }
+  setView("login");
   updateAuthentication();
   renderBooks();
 }
@@ -277,6 +287,8 @@ async function apiRequest(path, options = {}) {
       return apiRequest(path, { ...options, retrying: true });
     }
     clearSession();
+    document.querySelector("#login-status").textContent = "Tu sesión ha caducado. Inicia sesión de nuevo.";
+    document.querySelector("#login-status").hidden = false;
   }
   return readApiResponse(response);
 }
@@ -363,34 +375,12 @@ function renderBooks() {
       actions.append(actionGroup);
     }
 
-    const copiesCell = createCell(String(book.ejemplares));
-    if (isStaff() && !readOnlyCatalog) {
-      const copiesForm = document.createElement("form");
-      copiesForm.className = "copies-form";
-      copiesForm.dataset.id = String(book.id);
-      const input = document.createElement("input");
-      input.type = "number";
-      input.min = "1";
-      input.max = "50";
-      input.required = true;
-      input.value = String(book.ejemplares);
-      input.setAttribute("aria-label", `Ejemplares de ${book.titulo}`);
-      const save = document.createElement("button");
-      save.type = "submit";
-      save.className = "icon-button";
-      save.setAttribute("aria-label", `Guardar ejemplares de ${book.titulo}`);
-      save.title = "Guardar ejemplares";
-      save.textContent = "✓";
-      copiesForm.append(input, save);
-      copiesCell.replaceChildren(copiesForm);
-    }
-
     row.append(
       titleCell,
       createCell(book.autor.nombre),
       createCell(String(book.anio_publicacion)),
       createCell(book.isbn),
-      copiesCell,
+      createCell(String(book.ejemplares)),
       createCell(book.categorias.map((category) => category.nombre).join(", ") || "—"),
       actions,
     );
@@ -415,6 +405,67 @@ function renderBooks() {
     emptyTitle.textContent = "No encontramos ese libro";
     emptyDescription.textContent = "Prueba con otro título o nombre de autor.";
     document.querySelector("#empty-add-book").hidden = true;
+  }
+}
+
+function renderCopies() {
+  if (!copiesLoaded) return;
+  const query = copiesSearch.value.trim().toLocaleLowerCase("es");
+  const visibleBooks = books.filter((book) =>
+    `${book.titulo} ${book.autor.nombre}`.toLocaleLowerCase("es").includes(query),
+  );
+  copiesList.replaceChildren();
+  for (const book of visibleBooks) {
+    const row = document.createElement("tr");
+    const copiesForm = document.createElement("form");
+    copiesForm.className = "copies-form";
+    copiesForm.dataset.id = String(book.id);
+    const input = document.createElement("input");
+    input.type = "number";
+    input.min = "1";
+    input.max = "50";
+    input.required = true;
+    input.value = String(book.ejemplares);
+    input.setAttribute("aria-label", `Ejemplares de ${book.titulo}`);
+    const save = document.createElement("button");
+    save.type = "submit";
+    save.className = "icon-button";
+    save.setAttribute("aria-label", `Guardar ejemplares de ${book.titulo}`);
+    save.title = "Guardar ejemplares";
+    save.textContent = "✓";
+    copiesForm.append(input, save);
+    const copiesCell = document.createElement("td");
+    copiesCell.append(copiesForm);
+    row.append(
+      createCell(book.titulo),
+      createCell(book.autor.nombre),
+      createCell(String(book.disponibles)),
+      copiesCell,
+    );
+    copiesList.append(row);
+  }
+  document.querySelector("#copies-empty").hidden = visibleBooks.length !== 0;
+  document.querySelector("#copies-count").textContent =
+    `${visibleBooks.length} ${visibleBooks.length === 1 ? "libro" : "libros"}`;
+}
+
+async function loadCopies() {
+  const request = ++copiesRequest;
+  copiesLoaded = false;
+  copiesNotice.hidden = true;
+  copiesList.replaceChildren();
+  document.querySelector("#copies-empty").hidden = true;
+  document.querySelector("#copies-count").textContent = "0 libros";
+  try {
+    const loadedBooks = await listAll("/libros");
+    if (activeView !== "ejemplares" || request !== copiesRequest) return;
+    books = loadedBooks;
+    copiesLoaded = true;
+    renderCopies();
+  } catch (error) {
+    if (activeView !== "ejemplares" || request !== copiesRequest) return;
+    copiesNotice.textContent = `No se pudieron cargar los ejemplares: ${error.message}`;
+    copiesNotice.hidden = false;
   }
 }
 
@@ -447,6 +498,7 @@ async function loadBooks() {
     updateAuthentication();
     renderBooks();
   } catch (error) {
+    if (!currentUser) return;
     configureReadOnlyCatalog();
     try {
       await loadStaticCatalog(
@@ -504,9 +556,16 @@ async function loadResource(resourceName) {
 
 function setView(viewName) {
   // Sincroniza navegación, vista activa y datos que deben actualizarse.
+  if (!currentUser && viewName !== "login") return;
+  if (activeView === "login" && viewName !== "login") {
+    document.querySelector("#login-password").value = "";
+  }
   activeView = viewName;
+  appShell.hidden = viewName === "login";
   booksView.hidden = viewName !== "libros";
-  managementView.hidden = viewName === "libros";
+  copiesView.hidden = viewName !== "ejemplares";
+  loginView.hidden = viewName !== "login";
+  managementView.hidden = !Object.hasOwn(resources, viewName);
   for (const link of document.querySelectorAll(".nav-link[data-view]")) {
     const selected = link.dataset.view === viewName;
     link.classList.toggle("active", selected);
@@ -515,6 +574,11 @@ function setView(viewName) {
   }
   if (viewName === "libros") {
     loadBooks();
+  } else if (viewName === "ejemplares") {
+    copiesSearch.value = "";
+    loadCopies();
+  } else if (viewName === "login") {
+    document.querySelector("#login-email").focus();
   } else {
     managementSearch.value = "";
     loadResource(viewName);
@@ -806,22 +870,23 @@ form.addEventListener("submit", async (event) => {
   }
 });
 
-bookList.addEventListener("submit", async (event) => {
+copiesList.addEventListener("submit", async (event) => {
   const copiesForm = event.target.closest(".copies-form");
   if (!copiesForm) return;
   event.preventDefault();
   const save = copiesForm.querySelector("button");
   const input = copiesForm.querySelector("input");
   save.disabled = true;
-  hideNotice();
+  copiesNotice.hidden = true;
   try {
     await apiRequest(`/libros/${copiesForm.dataset.id}`, {
       method: "PATCH",
       body: JSON.stringify({ ejemplares: Number(input.value) }),
     });
-    await loadBooks();
+    if (activeView === "ejemplares") await loadCopies();
   } catch (error) {
-    showNotice(`No se pudieron guardar los ejemplares: ${error.message}`);
+    copiesNotice.textContent = `No se pudieron guardar los ejemplares: ${error.message}`;
+    copiesNotice.hidden = false;
   } finally {
     save.disabled = false;
   }
@@ -855,23 +920,18 @@ document.querySelectorAll(".nav-link[data-view]").forEach((link) => {
 document.querySelector("#add-record").addEventListener("click", () => openRecordDialog());
 document.querySelector("#refresh-records").addEventListener("click", () => loadResource(activeView));
 managementSearch.addEventListener("input", () => renderManagement(activeView));
+document.querySelector("#refresh-copies").addEventListener("click", loadCopies);
+copiesSearch.addEventListener("input", renderCopies);
 document.querySelector("#close-record-dialog").addEventListener("click", () => recordDialog.close());
 document.querySelector("#cancel-record-dialog").addEventListener("click", () => recordDialog.close());
 
-const loginDialog = document.querySelector("#login-dialog");
 const loginForm = document.querySelector("#login-form");
 const loginError = document.querySelector("#login-error");
 const registerDialog = document.querySelector("#register-dialog");
 const registerForm = document.querySelector("#register-form");
 const registerError = document.querySelector("#register-error");
-document.querySelector("#login-button").addEventListener("click", () => {
-  loginError.hidden = true;
-  loginDialog.showModal();
-});
-document.querySelector("#close-login-dialog").addEventListener("click", () => loginDialog.close());
-document.querySelector("#cancel-login").addEventListener("click", () => loginDialog.close());
 document.querySelector("#open-register").addEventListener("click", () => {
-  loginDialog.close();
+  document.querySelector("#login-password").value = "";
   registerError.hidden = true;
   registerDialog.showModal();
   document.querySelector("#register-name").focus();
@@ -881,7 +941,6 @@ document.querySelector("#cancel-register").addEventListener("click", () => regis
 document.querySelector("#open-login").addEventListener("click", () => {
   registerDialog.close();
   loginError.hidden = true;
-  loginDialog.showModal();
   document.querySelector("#login-email").focus();
 });
 registerForm.addEventListener("submit", async (event) => {
@@ -902,9 +961,9 @@ registerForm.addEventListener("submit", async (event) => {
     registerDialog.close();
     document.querySelector("#login-email").value = email;
     loginError.hidden = true;
-    loginDialog.showModal();
+    document.querySelector("#login-status").textContent = "Cuenta creada correctamente. Inicia sesión para continuar.";
+    document.querySelector("#login-status").hidden = false;
     document.querySelector("#login-password").focus();
-    showNotice("Cuenta creada correctamente. Inicia sesión para continuar.");
   } catch (error) {
     registerError.textContent = error.message;
     registerError.hidden = false;
@@ -914,22 +973,26 @@ registerForm.addEventListener("submit", async (event) => {
 });
 document.querySelector("#logout-button").addEventListener("click", async () => {
   let logoutError = null;
-  if (refreshToken) {
+  const token = refreshToken;
+  clearSession();
+  loginError.hidden = true;
+  document.querySelector("#login-status").hidden = true;
+  if (token) {
     try {
       const response = await fetchApi(`${apiBaseUrl}/api/v1/auth/logout`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ refresh_token: refreshToken }),
+        body: JSON.stringify({ refresh_token: token }),
       });
       await readApiResponse(response);
     } catch (error) {
       logoutError = error;
     }
   }
-  clearSession();
-  await loadBooks();
   if (logoutError) {
-    showNotice(`La sesión se cerró localmente; no se pudo revocar el token: ${logoutError.message}`);
+    document.querySelector("#login-status").textContent =
+      `La sesión se cerró localmente; no se pudo revocar el token: ${logoutError.message}`;
+    document.querySelector("#login-status").hidden = false;
   }
 });
 loginForm.addEventListener("submit", async (event) => {
@@ -947,11 +1010,11 @@ loginForm.addEventListener("submit", async (event) => {
     const tokens = await readApiResponse(response);
     accessToken = tokens.access_token;
     refreshToken = tokens.refresh_token;
+    readOnlyCatalog = false;
     currentUser = await apiRequest("/auth/me");
     loginForm.reset();
-    loginDialog.close();
     updateAuthentication();
-    await loadBooks();
+    setView("libros");
   } catch (error) {
     clearSession();
     loginError.textContent = error.message;
@@ -1032,4 +1095,9 @@ managementList.addEventListener("click", async (event) => {
 
 document.querySelector("#refresh-records").hidden = readOnlyCatalog;
 updateAuthentication();
-loadBooks();
+setView("login");
+if (pagesApiNotConfigured) {
+  document.querySelector("#login-status").textContent =
+    "Configura la URL de la API para poder iniciar sesión.";
+  document.querySelector("#login-status").hidden = false;
+}
