@@ -265,7 +265,7 @@ def test_edit_copies_independently(ui: UI) -> None:
     sign_in(ui)
     expect(ui.page.locator(".copies-form")).to_have_count(0)
     ui.page.locator('[data-view="ejemplares"]').click()
-    expect(ui.page.locator("#breadcrumb-current")).to_have_text("Ejemplares")
+    expect(ui.page.locator(".breadcrumb")).to_have_count(0)
     expect(ui.page.locator("#copies-list tr")).to_have_count(1)
     ui.page.locator("#copies-search").fill("inexistente")
     expect(ui.page.locator("#copies-empty")).to_be_visible()
@@ -736,6 +736,7 @@ def test_readable_text_and_touch_targets_in_all_views(ui: UI, width: int) -> Non
     sign_in(ui)
     for view in ("libros", "ejemplares", "autores", "categorias", "socios", "prestamos"):
         ui.page.locator(f'[data-view="{view}"]').click()
+        expect(ui.page.locator(".breadcrumb")).to_have_count(0)
         if view == "libros":
             expect(ui.page.locator("#book-list tr")).to_have_count(1)
         elif view == "ejemplares":

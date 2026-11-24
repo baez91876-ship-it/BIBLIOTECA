@@ -561,8 +561,6 @@ function setView(viewName) {
     document.querySelector("#login-password").value = "";
   }
   activeView = viewName;
-  document.querySelector("#breadcrumb-current").textContent =
-    resources[viewName]?.title ?? (viewName === "ejemplares" ? "Ejemplares" : "Colección");
   appShell.hidden = viewName === "login";
   booksView.hidden = viewName !== "libros";
   copiesView.hidden = viewName !== "ejemplares";
