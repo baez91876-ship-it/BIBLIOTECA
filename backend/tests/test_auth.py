@@ -124,7 +124,7 @@ def test_cinco_intentos_fallidos_bloquean_por_quince_minutos(api):
     assert register(client).status_code == 201
 
     with session_factory() as db:
-        for attempt in range(4):
+        for _ in range(4):
             with pytest.raises(auth_controller.NoAutenticado):
                 auth_controller.login("reader@example.com", "wrong", db)
         with pytest.raises(auth_controller.CuentaBloqueada):

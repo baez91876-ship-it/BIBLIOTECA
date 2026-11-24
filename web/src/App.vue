@@ -120,7 +120,7 @@ onMounted(() => {
   <header class="topbar">
     <a class="brand" href="./" aria-label="Inicio BIBLIOTECA">BIBLIOTECA<span>.</span></a>
     <div class="user">
-      <span v-if="session.user" id="signed-in-user">{{ session.user.nombre }} · {{ session.user.rol }}</span>
+      <span v-if="session.user" id="signed-in-user">{{ session.user.nombre }}</span>
       <button class="secondary" id="logout-button" @click="signOut">Cerrar sesión</button>
     </div>
   </header>

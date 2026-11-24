@@ -207,7 +207,7 @@ function updateAuthentication() {
   logoutButton.hidden = !currentUser;
   userLabel.hidden = !currentUser;
   userLabel.textContent = currentUser
-    ? `${currentUser.nombre} · ${currentUser.rol}`
+    ? currentUser.nombre
     : "";
   document.querySelector("#add-book").hidden = !isStaff() || readOnlyCatalog;
   document.querySelector("#add-record").hidden = !isStaff() || readOnlyCatalog;

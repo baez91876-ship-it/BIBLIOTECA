@@ -113,7 +113,7 @@ def sign_in(ui: UI) -> None:
     ui.page.locator("#login-email").fill(TEST_EMAIL)
     ui.page.locator("#login-password").fill(TEST_PASSWORD)
     ui.page.locator("#submit-login").click()
-    expect(ui.page.locator("#signed-in-user")).to_contain_text("administrador")
+    expect(ui.page.locator("#signed-in-user")).to_have_text("Administrador UI")
     expect(ui.page.locator("#login-view")).not_to_be_visible()
 
 
@@ -494,7 +494,7 @@ def test_registration_login_permissions_and_logout(ui: UI) -> None:
     expect(ui.page.locator("#login-email")).to_have_value("registro-ui@example.com")
     ui.page.locator("#login-password").fill(TEST_PASSWORD)
     ui.page.locator("#submit-login").click()
-    expect(ui.page.locator("#signed-in-user")).to_contain_text("socio")
+    expect(ui.page.locator("#signed-in-user")).to_have_text("Lector Nuevo")
     expect(ui.page.locator("#add-book")).not_to_be_visible()
     expect(ui.page.locator('[data-view="socios"]')).not_to_be_visible()
     expect(ui.page.locator('[data-view="ejemplares"]')).not_to_be_visible()
@@ -535,7 +535,7 @@ def test_normal_user_full_journey(reader: UI, path: str, width: int) -> None:
     expect(ui.page.locator("#search")).not_to_be_visible()
     ui.page.locator("#login-password").fill(TEST_PASSWORD)
     ui.page.get_by_role("button", name="Entrar").click()
-    expect(ui.page.locator("#signed-in-user")).to_contain_text("socio")
+    expect(ui.page.locator("#signed-in-user")).to_have_text("Lector Normal")
     expect(ui.page.locator("#add-book")).not_to_be_visible()
     expect(ui.page.locator(".copies-form")).to_have_count(0)
     assert ui.page.evaluate("() => document.documentElement.scrollWidth <= innerWidth")
@@ -612,7 +612,7 @@ def test_normal_user_session_expiry(reader: UI, path: str) -> None:
     ui.page.locator("#login-email").fill("normal-ui@example.com")
     ui.page.locator("#login-password").fill(TEST_PASSWORD)
     ui.page.get_by_role("button", name="Entrar").click()
-    expect(ui.page.locator("#signed-in-user")).to_contain_text("socio")
+    expect(ui.page.locator("#signed-in-user")).to_have_text("Lector Normal")
     expect(ui.page.locator("#search")).to_be_visible()
     ui.page.route(
         "**/api/v1/categorias?**",
@@ -965,7 +965,7 @@ def test_invalid_login_displays_error_and_allows_retry(ui: UI) -> None:
     expect(ui.page.locator("#submit-login")).to_be_enabled()
     ui.page.locator("#login-password").fill(TEST_PASSWORD)
     ui.page.locator("#submit-login").click()
-    expect(ui.page.locator("#signed-in-user")).to_contain_text("administrador")
+    expect(ui.page.locator("#signed-in-user")).to_have_text("Administrador UI")
 
 
 @pytest.mark.parametrize("json_response", [True, False])

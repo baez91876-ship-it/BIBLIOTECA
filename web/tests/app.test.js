@@ -51,6 +51,8 @@ describe("catálogo de libros", () => {
     expect(session.user.rol).toBe("bibliotecario");
     expect(wrapper.find("#add-book").exists()).toBe(true);
     expect(wrapper.find(".login-view").exists()).toBe(false);
+    expect(wrapper.find("#signed-in-user").text()).toBe("Ana");
+    expect(wrapper.find("#signed-in-user").text()).not.toContain("bibliotecario");
     expect(wrapper.findAll(".book-card")).toHaveLength(1);
     expect(wrapper.find(".book-card").text()).toContain("Rayuela");
   });
